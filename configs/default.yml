@@ -1,0 +1,43 @@
+review:
+  max_files: 20
+  max_findings: 8
+  confidence_threshold: 0.6
+  temperature: 0.1
+
+filters:
+  skip_paths:
+    - "dist/"
+    - "build/"
+    - "node_modules/"
+  skip_files:
+    - "package-lock.json"
+    - "yarn.lock"
+    - "pnpm-lock.yaml"
+    - "poetry.lock"
+  skip_extensions:
+    - ".png"
+    - ".jpg"
+    - ".jpeg"
+    - ".gif"
+    - ".pdf"
+    - ".lock"
+    - ".zip"
+    - ".exe"
+  max_patch_lines_per_file: 800
+
+context:
+  surrounding_lines: 30
+  include_readme: true
+  include_related_tests: true
+  max_context_chars_per_file: 12000
+  readme_excerpt_chars: 2000
+
+llm:
+  provider: "openai_compatible"
+  model: "gpt-4.1-mini"
+  temperature: 0.1
+  max_output_tokens: 3000
+
+github:
+  api_base_url: "https://api.github.com"
+  timeout_seconds: 30.0
