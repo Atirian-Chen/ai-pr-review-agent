@@ -1,0 +1,45 @@
+{
+  "pr": {
+    "owner": "octocat",
+    "repo": "Hello-World",
+    "pull_number": 1,
+    "title": "Edited README via GitHub",
+    "body": "",
+    "base_branch": "master",
+    "head_branch": "patch-1",
+    "base_sha": "553c2077f0edc3d5dc5d17262f6aa498e69d6f8e",
+    "head_sha": "7044a8a032e85b6ab611033b2ac8af7ce85805b2",
+    "author": "unoju",
+    "url": "https://github.com/octocat/Hello-World/pull/1"
+  },
+  "summary": "Reviewed 1 file(s) in PR #1: This PR introduces poorly formatted command descriptions in the README, where shell commands and their explanations are concatenated without spaces, causing readability issues.",
+  "findings": [
+    {
+      "id": "finding-3c75cc31f989",
+      "file_path": "README",
+      "line_start": 2,
+      "line_end": 6,
+      "category": "maintainability",
+      "severity": "minor",
+      "confidence": 0.95,
+      "title": "Concatenated command and description without spacing",
+      "description": "The added lines incorrectly combine the shell command and its explanation into a single string, making the README confusing and unreadable. For example, '$ mkdir ~/Hello-WorldCreates a directory for your project called \"Hello-World\" in your user directory' should be separated into command and description.",
+      "evidence": "+$ mkdir ~/Hello-WorldCreates a directory for your project called \"Hello-World\" in your user directory",
+      "suggestion": "Separate the command and its description, e.g., using a code block for the command and plain text for the explanation. For example:\n\n```\n$ mkdir ~/Hello-World\n```\nCreates a directory for your project called \"Hello-World\" in your user directory.",
+      "suggested_patch": null,
+      "reviewer": "general"
+    }
+  ],
+  "stats": {
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 23.72604139999021,
+    "llm_latency_seconds": 18.410972699988633,
+    "total_tokens": 1563
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deepseek-v4-pro"
+  },
+  "trace_id": "f1606615-0054-42f3-a323-a001f600121d"
+}
