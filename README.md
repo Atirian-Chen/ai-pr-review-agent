@@ -18,7 +18,6 @@ Given a GitHub PR URL, the agent can:
 - Validate findings with Pydantic schemas and line-number checks.
 - Generate `review_result.json`, `review_report.md`, and `trace.jsonl`.
 
-对应中文能力：
 
 - 通过 GitHub REST API 获取 PR 元数据和变更文件。
 - 将 GitHub patch 解析为带新旧行号的结构化 diff。
@@ -40,7 +39,6 @@ Most toy AI code review demos stop at "send the diff to an LLM and ask for comme
 - How to reduce false positives with conservative prompts and validators.
 - How to preserve trace, latency, token usage, and reproducible reports.
 
-对应中文总结：
 
 - 要能精确解析 PR diff 和变更行。
 - 要能构建恰当的仓库上下文，而不是盲目塞整个仓库。
@@ -99,8 +97,6 @@ Renderer
     - review_report.md
     - trace.jsonl
 ```
-
-中文说明：
 
 这个 MVP 的核心设计是把一次 AI Review 拆成多个可测试、可替换的模块。GitHub Client 只负责读取 PR，Diff Parser 只负责结构化 patch，Context Retriever 只负责构建模型上下文，Reviewer 只负责模型调用，Validator 负责质量控制，Renderer 负责输出报告。这样后续要升级到多 reviewer、GitHub Action 或评测系统时，不需要推倒重来。
 
