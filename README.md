@@ -112,16 +112,6 @@ python -m venv .venv
 copy .env.example .env
 ```
 
-On this workspace, the default MSYS Python may fail to install `pydantic-core`. The tested environment uses the Codex bundled Windows Python:
-
-在当前工作区，默认 MSYS Python 可能无法正常安装 `pydantic-core`。已经验证可用的方式是使用 Codex bundled Windows Python：
-
-```powershell
-C:\Users\Atirian\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m venv .venv-win
-.\.venv-win\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv-win\Scripts\python.exe -m pytest
-```
-
 Fill `.env`:
 
 填写 `.env`：
@@ -138,7 +128,7 @@ Fetch PR metadata and structured diff only:
 只获取 PR 元数据和结构化 diff：
 
 ```powershell
-.\.venv-win\Scripts\pr-agent.exe fetch https://github.com/owner/repo/pull/123 --out outputs/demo
+.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/pull/123 --out outputs/demo
 ```
 
 Run the full MVP review:
@@ -146,7 +136,7 @@ Run the full MVP review:
 运行完整 MVP review：
 
 ```powershell
-.\.venv-win\Scripts\pr-agent.exe review https://github.com/owner/repo/pull/123 --out outputs/demo
+.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/pull/123 --out outputs/demo
 ```
 
 Run tests:
@@ -154,8 +144,16 @@ Run tests:
 运行测试：
 
 ```powershell
-.\.venv-win\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest
 ```
+
+Troubleshooting:
+
+故障排查：
+
+If dependency installation fails on Windows MSYS/Git Bash with a `pydantic-core` build error, create the virtual environment with a standard CPython 3.11+ interpreter, for example the Python Launcher (`py -3.11 -m venv .venv`) or the installer from python.org.
+
+如果在 Windows MSYS/Git Bash 环境中安装依赖时遇到 `pydantic-core` 构建错误，建议改用标准 CPython 3.11+ 创建虚拟环境，例如 Python Launcher（`py -3.11 -m venv .venv`）或 python.org 安装版。
 
 Current test status:
 
@@ -181,6 +179,12 @@ Generated example files:
 
 - `examples/octocat_hello_world/review_result.json`
 - `examples/octocat_hello_world/review_report.md`
+
+Detailed demo notes:
+
+详细 demo 说明：
+
+- `examples/octocat_hello_world/README.md`
 
 Example finding:
 
