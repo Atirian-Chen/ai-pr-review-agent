@@ -39,6 +39,7 @@ class LLMSettings(BaseModel):
     model: str = "gpt-4.1-mini"
     temperature: float = 0.1
     max_output_tokens: int = 3000
+    timeout_seconds: float = 120.0
 
 
 class GitHubSettings(BaseModel):

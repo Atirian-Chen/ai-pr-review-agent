@@ -110,10 +110,14 @@ Create and install a virtual environment:
 创建并安装虚拟环境：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+py -3.12 -m venv .venv-win
+.\.venv-win\Scripts\python.exe -m pip install -e ".[dev]"
 copy .env.example .env
 ```
+
+This README uses `.venv-win` for Windows PowerShell commands to avoid confusion with MSYS/Mingw-created virtual environments, which expose executables under `bin/` instead of the standard Windows `Scripts/` directory. If you create a normal Windows CPython environment named `.venv`, replace `.venv-win` with `.venv` in the commands.
+
+本 README 在 Windows PowerShell 命令中使用 `.venv-win`，是为了避免和 MSYS/Mingw Python 创建的 `.venv` 混淆；后者通常使用 `bin/`，而不是标准 Windows 的 `Scripts/`。如果你用标准 Windows CPython 创建名为 `.venv` 的环境，只需要把命令里的 `.venv-win` 换成 `.venv`。
 
 Fill `.env`:
 
@@ -124,6 +128,7 @@ GITHUB_TOKEN=your_github_token
 OPENAI_API_KEY=your_openai_or_compatible_api_key
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4.1-mini
+OPENAI_TIMEOUT_SECONDS=120
 ```
 
 Fetch metadata and structured diff only:
@@ -132,16 +137,16 @@ Fetch metadata and structured diff only:
 
 ```powershell
 # GitHub PR
-.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/pull/123 --out outputs/pr-fetch
+.\.venv-win\Scripts\pr-agent.exe fetch https://github.com/owner/repo/pull/123 --out outputs/pr-fetch
 
 # GitHub commit
-.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/commit/<sha> --out outputs/commit-fetch
+.\.venv-win\Scripts\pr-agent.exe fetch https://github.com/owner/repo/commit/<sha> --out outputs/commit-fetch
 
 # GitHub compare/range
-.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/compare/main...feature --out outputs/compare-fetch
+.\.venv-win\Scripts\pr-agent.exe fetch https://github.com/owner/repo/compare/main...feature --out outputs/compare-fetch
 
 # Local uncommitted git diff against HEAD
-.\.venv\Scripts\pr-agent.exe fetch local --out outputs/local-fetch
+.\.venv-win\Scripts\pr-agent.exe fetch local --out outputs/local-fetch
 ```
 
 Run full review with the same command shape:
@@ -150,16 +155,16 @@ Run full review with the same command shape:
 
 ```powershell
 # GitHub PR
-.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/pull/123 --out outputs/pr-review
+.\.venv-win\Scripts\pr-agent.exe review https://github.com/owner/repo/pull/123 --out outputs/pr-review
 
 # GitHub commit
-.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/commit/<sha> --out outputs/commit-review
+.\.venv-win\Scripts\pr-agent.exe review https://github.com/owner/repo/commit/<sha> --out outputs/commit-review
 
 # GitHub compare/range
-.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/compare/main...feature --out outputs/compare-review
+.\.venv-win\Scripts\pr-agent.exe review https://github.com/owner/repo/compare/main...feature --out outputs/compare-review
 
 # Local uncommitted git diff against HEAD
-.\.venv\Scripts\pr-agent.exe review local --out outputs/local-review
+.\.venv-win\Scripts\pr-agent.exe review local --out outputs/local-review
 ```
 
 Run tests:
@@ -167,7 +172,7 @@ Run tests:
 运行测试：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest
+.\.venv-win\Scripts\python.exe -m pytest
 ```
 
 Current test status:
@@ -175,16 +180,18 @@ Current test status:
 当前测试状态：
 
 ```text
-34 passed
+36 passed
 ```
 
 Troubleshooting:
 
 故障排查：
 
-If dependency installation fails on Windows MSYS/Git Bash with a `pydantic-core` build error, create the virtual environment with a standard CPython 3.11+ interpreter, for example the Python Launcher (`py -3.11 -m venv .venv`) or the installer from python.org.
+If dependency installation fails on Windows MSYS/Git Bash with a `pydantic-core` build error, create the virtual environment with a standard CPython 3.11+ interpreter, for example the Python Launcher (`py -3.11 -m venv .venv-win`) or the installer from python.org.
 
-如果在 Windows MSYS/Git Bash 环境中安装依赖时遇到 `pydantic-core` 构建错误，建议改用标准 CPython 3.11+ 创建虚拟环境，例如 Python Launcher（`py -3.11 -m venv .venv`）或 python.org 安装版。
+If `review` fails with `ReadTimeout: The read operation timed out`, the LLM provider did not finish sending the response before the timeout. Increase `OPENAI_TIMEOUT_SECONDS` in `.env` or `llm.timeout_seconds` in `configs/default.yml`, then retry.
+
+如果在 Windows MSYS/Git Bash 环境中安装依赖时遇到 `pydantic-core` 构建错误，建议改用标准 CPython 3.11+ 创建虚拟环境，例如 Python Launcher（`py -3.11 -m venv .venv-win`）或 python.org 安装版。
 
 ## 6. Example Output / 示例输出
 

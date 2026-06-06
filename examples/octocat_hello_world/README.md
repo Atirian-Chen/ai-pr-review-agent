@@ -21,7 +21,7 @@ After installing the project and filling `.env`, the full review can be reproduc
 安装项目并填写 `.env` 后，可以用下面的命令复现完整 review：
 
 ```powershell
-.\.venv\Scripts\pr-agent.exe review https://github.com/octocat/Hello-World/pull/1 --out examples/octocat_hello_world
+.\.venv-win\Scripts\pr-agent.exe review https://github.com/octocat/Hello-World/pull/1 --out examples/octocat_hello_world
 ```
 
 The CLI also supports a fetch-only mode for inspecting GitHub metadata and parsed diff hunks before calling the LLM:
@@ -29,7 +29,7 @@ The CLI also supports a fetch-only mode for inspecting GitHub metadata and parse
 CLI 也支持只抓取 PR 元数据和解析后 diff，不调用 LLM：
 
 ```powershell
-.\.venv\Scripts\pr-agent.exe fetch https://github.com/octocat/Hello-World/pull/1 --out outputs/octocat_fetch
+.\.venv-win\Scripts\pr-agent.exe fetch https://github.com/octocat/Hello-World/pull/1 --out outputs/octocat_fetch
 ```
 
 ## Output Files / 输出说明
