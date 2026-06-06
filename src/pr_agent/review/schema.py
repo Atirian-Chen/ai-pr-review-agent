@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from pr_agent.github.models import PRInfo
+from pr_agent.github.models import ReviewTargetInfo
 
 
 Category = Literal["bug", "security", "performance", "maintainability", "test", "style"]
@@ -47,7 +47,7 @@ class ReviewFinding(BaseModel):
 
 
 class ReviewResult(BaseModel):
-    pr: PRInfo
+    pr: ReviewTargetInfo
     summary: str
     findings: list[ReviewFinding]
     stats: dict[str, Any] = Field(default_factory=dict)

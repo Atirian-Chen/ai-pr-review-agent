@@ -1,0 +1,78 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "local",
+    "repo": "local-diff-repo",
+    "pull_number": null,
+    "identifier": "local",
+    "title": "Local git diff in local-diff-repo",
+    "body": "Uncommitted local changes compared with HEAD.",
+    "base_branch": "main",
+    "head_branch": "working-tree",
+    "base_sha": "543d0bbc3638b99586489011660730e070969b09",
+    "head_sha": "WORKTREE",
+    "author": "Tester",
+    "url": "local://local-diff-repo"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target local: The PR adds a zero-division guard that returns None instead of raising an exception. This silent failure may cause issues for callers expecting a numeric result or relying on ZeroDivisionError. Additionally, no tests cover the new code path, and the function lacks type hints/documentation for the new None return.",
+  "findings": [
+    {
+      "id": "finding-811772c43af7",
+      "file_path": "calc.py",
+      "line_start": 2,
+      "line_end": 3,
+      "category": "test",
+      "severity": "major",
+      "confidence": 0.9,
+      "title": "Missing test coverage for zero division case",
+      "description": "The new branch for b == 0 is not covered by any tests in the PR. No test file modifications are included, and the behavior change needs verification.",
+      "evidence": "No test changes in the PR. Related test files candidates exist but are not provided.",
+      "suggestion": "Add a test case for divide with b=0 to assert the expected behavior (return None or raise exception).",
+      "suggested_patch": null,
+      "reviewer": "general"
+    },
+    {
+      "id": "finding-3a7a206994e6",
+      "file_path": "calc.py",
+      "line_start": 2,
+      "line_end": 3,
+      "category": "bug",
+      "severity": "major",
+      "confidence": 0.7,
+      "title": "Returning None on zero division may break callers",
+      "description": "The original function would raise a ZeroDivisionError when dividing by zero, which callers might have caught. The new code silently returns None, which can cause unexpected NoneType errors if callers are not updated to handle None.",
+      "evidence": "Added lines: `if b == 0: return None`",
+      "suggestion": "Consider raising a specific exception (e.g., ValueError) instead of returning None, or ensure all callers are refactored to check for None. If returning None, document the behavior clearly.",
+      "suggested_patch": "if b == 0:\n    raise ValueError('b cannot be zero')",
+      "reviewer": "general"
+    },
+    {
+      "id": "finding-c0518004ea51",
+      "file_path": "calc.py",
+      "line_start": 1,
+      "line_end": 4,
+      "category": "maintainability",
+      "severity": "minor",
+      "confidence": 0.8,
+      "title": "Missing type hints and documentation for None return",
+      "description": "The function now can return None, but this is not indicated in type annotations or docstring. This may confuse developers and lead to type errors.",
+      "evidence": "Function signature lacks return type annotation; no docstring.",
+      "suggestion": "Add type hints: `def divide(a: float, b: float) -> Optional[float]` and a docstring explaining that None is returned on zero division.",
+      "suggested_patch": "from typing import Optional\n\ndef divide(a: float, b: float) -> Optional[float]:\n    \"\"\"Return a / b, or None if b is zero.\"\"\"\n    if b == 0:\n        return None\n    return a / b",
+      "reviewer": "general"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 46.56476409989409,
+    "llm_latency_seconds": 46.21957920002751,
+    "total_tokens": 3054
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deepseek-v4-pro"
+  },
+  "trace_id": "ad27e818-eae7-45a4-a918-2a7783fee3ea"
+}

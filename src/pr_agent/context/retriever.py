@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from pr_agent.config import AppConfig
 from pr_agent.context.models import ReviewContext
 from pr_agent.diff.models import DiffHunk
 from pr_agent.github.client import GitHubClient
-from pr_agent.github.models import ChangedFile, PRInfo
+from pr_agent.github.models import ChangedFile, ReviewTargetInfo
 
 
 class ContextRetriever:
-    def __init__(self, github_client: GitHubClient, config: AppConfig) -> None:
+    def __init__(self, github_client: GitHubClient, config: AppConfig, repo_root: Path | None = None) -> None:
         self.github_client = github_client
         self.config = config
+        self.repo_root = repo_root
 
-    def build(self, pr: PRInfo, changed_file: ChangedFile, hunks: list[DiffHunk]) -> ReviewContext:
+    def build(self, pr: ReviewTargetInfo, changed_file: ChangedFile, hunks: list[DiffHunk]) -> ReviewContext:
         surrounding_code = self._get_surrounding_code(pr, changed_file, hunks)
         readme_excerpt = self._get_readme_excerpt(pr) if self.config.context.include_readme else None
         related_tests = infer_related_test_files(changed_file.filename) if self.config.context.include_related_tests else []
@@ -31,16 +32,19 @@ class ContextRetriever:
             repo_readme_excerpt=readme_excerpt,
         )
 
-    def _get_surrounding_code(self, pr: PRInfo, changed_file: ChangedFile, hunks: list[DiffHunk]) -> str | None:
+    def _get_surrounding_code(self, pr: ReviewTargetInfo, changed_file: ChangedFile, hunks: list[DiffHunk]) -> str | None:
         if changed_file.status == "removed":
             return None
 
-        content = self.github_client.get_file_content(
-            owner=pr.owner,
-            repo=pr.repo,
-            path=changed_file.filename,
-            ref=pr.head_sha,
-        )
+        if pr.source_type == "local_diff":
+            content = self._get_local_file_content(changed_file.filename)
+        else:
+            content = self.github_client.get_file_content(
+                owner=pr.owner,
+                repo=pr.repo,
+                path=changed_file.filename,
+                ref=pr.head_sha,
+            )
         if content is None:
             return None
 
@@ -61,11 +65,27 @@ class ContextRetriever:
         numbered = [f"{line_no}: {lines[line_no - 1]}" for line_no in range(start, end + 1)]
         return _truncate("\n".join(numbered), self.config.context.max_context_chars_per_file)
 
-    def _get_readme_excerpt(self, pr: PRInfo) -> str | None:
+    def _get_readme_excerpt(self, pr: ReviewTargetInfo) -> str | None:
+        if pr.source_type == "local_diff":
+            content = self._get_local_file_content("README.md")
+            return _truncate(content, self.config.context.readme_excerpt_chars) if content else None
+
         content = self.github_client.get_file_content(pr.owner, pr.repo, "README.md", pr.head_sha)
         if not content:
             return None
         return _truncate(content, self.config.context.readme_excerpt_chars)
+
+    def _get_local_file_content(self, path: str) -> str | None:
+        root = self.repo_root
+        if root is None:
+            return None
+        file_path = root / path
+        if not file_path.exists() or not file_path.is_file():
+            return None
+        try:
+            return file_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            return file_path.read_text(encoding="utf-8", errors="replace")
 
 
 def _truncate(text: str, max_chars: int) -> str:

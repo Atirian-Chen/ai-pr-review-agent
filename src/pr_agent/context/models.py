@@ -5,11 +5,11 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 from pr_agent.diff.models import DiffHunk
-from pr_agent.github.models import ChangedFile, PRInfo
+from pr_agent.github.models import ChangedFile, ReviewTargetInfo
 
 
 class ReviewContext(BaseModel):
-    pr: PRInfo
+    pr: ReviewTargetInfo
     file: ChangedFile
     hunks: list[DiffHunk]
     target_file_patch: str

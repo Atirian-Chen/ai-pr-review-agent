@@ -1,31 +1,32 @@
 # AI PR Review Agent / 面向 GitHub PR 的 AI 代码审查 Agent
 
-AI PR Review Agent is a local-first MVP for reviewing GitHub Pull Requests with repository-aware context, structured LLM output, and conservative validation.
+AI PR Review Agent is a local-first code review agent for GitHub Pull Requests, GitHub commits, GitHub compare ranges, and local git diffs. It focuses on repository-aware context, structured LLM output, conservative review, and result validation.
 
-AI PR Review Agent 是一个面向 GitHub Pull Request 的本地可运行 MVP。它不是简单把 PR diff 丢给大模型，而是围绕 PR diff 解析、仓库上下文构建、结构化输出、保守审查策略和结果校验做成的工程化 Agent。
+AI PR Review Agent 是一个本地优先的 AI 代码审查 Agent，支持 GitHub PR、GitHub commit、GitHub compare range 和本地 git diff。它不是简单把 diff 丢给大模型，而是围绕 diff 解析、上下文构建、结构化输出、保守审查策略和结果校验做成的工程化 Agent。
 
 ## 1. What It Does / 项目功能
 
-Given a GitHub PR URL, the agent can:
+Given one review target, the same command can automatically detect the target type:
 
-输入一个 GitHub PR URL 后，系统会自动完成：
+输入一个 review target 后，同一个命令会自动识别目标类型：
 
-- Fetch PR metadata and changed files from the GitHub REST API.
-- Parse GitHub patch text into structured `DiffHunk` and `DiffLine` objects with old/new line numbers.
+- `https://github.com/owner/repo/pull/123` for GitHub PR review.
+- `https://github.com/owner/repo/commit/<sha>` for single-commit review.
+- `https://github.com/owner/repo/compare/<base>...<head>` for compare/range review.
+- `local` for uncommitted local git diff review against `HEAD`.
+
+Core workflow:
+
+核心流程：
+
+- Fetch PR, commit, or compare metadata from the GitHub REST API, or read local `git diff`.
+- Parse patch text into structured `DiffHunk` and `DiffLine` objects with old/new line numbers.
+- Normalize every source into one shared `ChangeSet` model.
 - Filter generated files, lock files, binary files, large patches, and removed files.
 - Retrieve lightweight repository context, including surrounding code, README excerpts, and related test file candidates.
 - Call an OpenAI-compatible LLM to generate conservative code review findings.
-- Validate findings with Pydantic schemas and line-number checks.
+- Validate findings with Pydantic schemas, confidence thresholds, file-path checks, and line-number checks.
 - Generate `review_result.json`, `review_report.md`, and `trace.jsonl`.
-
-
-- 通过 GitHub REST API 获取 PR 元数据和变更文件。
-- 将 GitHub patch 解析为带新旧行号的结构化 diff。
-- 跳过 lock 文件、构建产物、二进制文件、大 patch 和删除文件。
-- 构建轻量仓库上下文，包括同文件变更行上下文、README 摘要和测试文件候选路径。
-- 调用 OpenAI 兼容模型生成保守的代码审查建议。
-- 使用 Pydantic schema、置信度阈值和行号校验过滤低质量结果。
-- 输出 JSON 结构化结果、Markdown 报告和 trace 日志。
 
 ## 2. Why I Built It / 项目背景
 
@@ -33,39 +34,41 @@ Most toy AI code review demos stop at "send the diff to an LLM and ask for comme
 
 很多 AI Code Review 玩具项目只是“把 diff 发给大模型，让它吐几条建议”。这在工程上远远不够。真实代码审查的难点不只是调用模型，而是：
 
-- How to parse PR diffs into reliable changed-line structures.
+- How to parse PR/commit/range/local diffs into reliable changed-line structures.
 - How to provide enough repository context without flooding the prompt.
-- How to make the model output machine-checkable findings.
+- How to make model output machine-checkable.
 - How to reduce false positives with conservative prompts and validators.
 - How to preserve trace, latency, token usage, and reproducible reports.
 
-
-- 要能精确解析 PR diff 和变更行。
-- 要能构建恰当的仓库上下文，而不是盲目塞整个仓库。
-- 要强制模型输出可校验、可排序、可追踪的结构化结果。
-- 要通过保守 prompt 和 validator 降低误报。
-- 要保留 trace、延迟、token 和报告，形成工程闭环。
-
 ## 3. Features / 核心能力
 
-- **GitHub PR ingestion / PR 获取**: Parses PR URLs and fetches PR metadata plus changed files.
+- **One review command / 一个 review 指令**: `pr-agent review <target>` supports PR, commit, compare, and local diff targets.
+- **Target auto-detection / 自动识别目标**: Parses GitHub PR URLs, commit URLs, compare URLs, and `local`.
+- **Shared ChangeSet abstraction / 统一 ChangeSet 抽象**: Normalizes target metadata, changed files, and parsed hunks before review.
 - **Unified diff parser / Diff 解析**: Converts patch text into hunks and lines with old/new line numbers.
+- **Local git diff parser / 本地 diff 解析**: Splits full `git diff` output into file-level patches.
 - **Repository context retrieval / 仓库上下文检索**: Adds surrounding code, README snippets, and related test file candidates.
 - **Conservative reviewer / 保守审查 Agent**: Prompts the LLM to report only issues supported by diff or context.
 - **Structured findings / 结构化建议**: Uses `ReviewFinding` and `ReviewResult` schemas for reliable downstream processing.
 - **Quality gates / 质量过滤**: Filters low-confidence findings, invalid file paths, weak evidence, and hallucinated line numbers.
-- **Markdown report / Markdown 报告**: Renders readable review reports for local demo and portfolio presentation.
-- **Trace and metrics / Trace 与指标**: Records latency, model name, token usage, reviewed files, and trace ID.
+- **Markdown report / Markdown 报告**: Renders readable review reports for demos and portfolio presentation.
 
 ## 4. Architecture / 系统架构
 
 ```text
-GitHub PR URL
+Review Target
+    - GitHub PR URL
+    - GitHub commit URL
+    - GitHub compare URL
+    - local git diff
     ↓
-GitHub Client
-    - parse owner/repo/pull_number
-    - fetch PR metadata
-    - fetch changed files and patch text
+Target Parser
+    - detect pull_request / commit / compare / local_diff
+    ↓
+ChangeSet Loader
+    - fetch GitHub metadata and changed files
+    - or read local git diff
+    - normalize target + files + hunks_by_file
     ↓
 Diff Parser
     - parse unified diff hunk headers
@@ -98,7 +101,7 @@ Renderer
     - trace.jsonl
 ```
 
-这个 MVP 的核心设计是把一次 AI Review 拆成多个可测试、可替换的模块。GitHub Client 只负责读取 PR，Diff Parser 只负责结构化 patch，Context Retriever 只负责构建模型上下文，Reviewer 只负责模型调用，Validator 负责质量控制，Renderer 负责输出报告。这样后续要升级到多 reviewer、GitHub Action 或评测系统时，不需要推倒重来。
+这个设计把“变更来源”和“审查流程”解耦。PR、commit、compare、local diff 都先变成统一的 `ChangeSet`，后面的 context retrieval、LLM review、validator、renderer 都复用同一套逻辑。
 
 ## 5. Quick Start / 快速开始
 
@@ -123,20 +126,40 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-Fetch PR metadata and structured diff only:
+Fetch metadata and structured diff only:
 
-只获取 PR 元数据和结构化 diff：
+只获取元数据和结构化 diff：
 
 ```powershell
-.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/pull/123 --out outputs/demo
+# GitHub PR
+.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/pull/123 --out outputs/pr-fetch
+
+# GitHub commit
+.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/commit/<sha> --out outputs/commit-fetch
+
+# GitHub compare/range
+.\.venv\Scripts\pr-agent.exe fetch https://github.com/owner/repo/compare/main...feature --out outputs/compare-fetch
+
+# Local uncommitted git diff against HEAD
+.\.venv\Scripts\pr-agent.exe fetch local --out outputs/local-fetch
 ```
 
-Run the full MVP review:
+Run full review with the same command shape:
 
-运行完整 MVP review：
+使用同一个 `review <target>` 指令运行完整审查：
 
 ```powershell
-.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/pull/123 --out outputs/demo
+# GitHub PR
+.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/pull/123 --out outputs/pr-review
+
+# GitHub commit
+.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/commit/<sha> --out outputs/commit-review
+
+# GitHub compare/range
+.\.venv\Scripts\pr-agent.exe review https://github.com/owner/repo/compare/main...feature --out outputs/compare-review
+
+# Local uncommitted git diff against HEAD
+.\.venv\Scripts\pr-agent.exe review local --out outputs/local-review
 ```
 
 Run tests:
@@ -147,6 +170,14 @@ Run tests:
 .\.venv\Scripts\python.exe -m pytest
 ```
 
+Current test status:
+
+当前测试状态：
+
+```text
+34 passed
+```
+
 Troubleshooting:
 
 故障排查：
@@ -155,36 +186,27 @@ If dependency installation fails on Windows MSYS/Git Bash with a `pydantic-core`
 
 如果在 Windows MSYS/Git Bash 环境中安装依赖时遇到 `pydantic-core` 构建错误，建议改用标准 CPython 3.11+ 创建虚拟环境，例如 Python Launcher（`py -3.11 -m venv .venv`）或 python.org 安装版。
 
-Current test status:
-
-当前测试状态：
-
-```text
-23 passed
-```
-
 ## 6. Example Output / 示例输出
 
-Example PR:
+Example targets:
 
-示例 PR：
+示例目标：
 
 ```text
-https://github.com/octocat/Hello-World/pull/1
+PR:      https://github.com/octocat/Hello-World/pull/1
+Commit:  https://github.com/octocat/Hello-World/commit/7044a8a032e85b6ab611033b2ac8af7ce85805b2
+Compare: https://github.com/octocat/Hello-World/compare/553c2077f0edc3d5dc5d17262f6aa498e69d6f8e...7044a8a032e85b6ab611033b2ac8af7ce85805b2
+Local:   local
 ```
 
 Generated example files:
 
 生成的示例文件：
 
-- `examples/octocat_hello_world/review_result.json`
-- `examples/octocat_hello_world/review_report.md`
-
-Detailed demo notes:
-
-详细 demo 说明：
-
-- `examples/octocat_hello_world/README.md`
+- PR example: `examples/octocat_hello_world/review_result.json`, `examples/octocat_hello_world/review_report.md`
+- Commit example: `examples/octocat_commit/review_result.json`, `examples/octocat_commit/review_report.md`
+- Compare example: `examples/octocat_compare/review_result.json`, `examples/octocat_compare/review_report.md`
+- Local diff example: `examples/local_git_diff/review_result.json`, `examples/local_git_diff/review_report.md`
 
 Example finding:
 
@@ -216,22 +238,24 @@ Estimated tokens: 1563
 
 ## 7. Design Decisions / 设计取舍
 
-- **Local MVP first / 先做本地 MVP**: The first version focuses on a reliable CLI, JSON output, and Markdown report before GitHub comments or UI.
-- **No code execution / 不执行 PR 代码**: The agent only reads PR metadata and repository content. It does not run untrusted code from the PR.
+- **One command, multiple sources / 一个命令，多种来源**: Users keep using `review <target>` while the target parser handles PR, commit, compare, and local diff.
+- **ChangeSet abstraction / ChangeSet 抽象**: Different source types are normalized before review, avoiding duplicated reviewer logic.
+- **PR remains the main story / PR 仍是主线**: PR is still the best fit for GitHub code review workflows, while commit/compare/local support pre-PR and incremental scanning.
+- **No code execution / 不执行目标代码**: The agent only reads metadata, diffs, and file content. It does not run untrusted code.
 - **Structured output first / 优先结构化输出**: Findings must match Pydantic schemas, so they can be filtered, sorted, evaluated, and rendered.
 - **Conservative review strategy / 保守审查策略**: The prompt asks the LLM to report only issues supported by diff or context.
 - **Validation after generation / 生成后校验**: The validator filters weak findings by confidence, file path, line number, evidence, and suggestion quality.
-- **Lightweight context before vector RAG / 先做轻量上下文**: MVP uses diff, surrounding code, README excerpts, and related test file candidates before introducing embeddings.
-- **OpenAI-compatible API / OpenAI 兼容接口**: The LLM client works with OpenAI and compatible model providers through `OPENAI_BASE_URL` and `OPENAI_MODEL`.
+- **Lightweight context before vector RAG / 先做轻量上下文**: MVP uses diff, surrounding code, README excerpts, and related test candidates before introducing embeddings.
 
 ## 8. Roadmap / 后续计划
 
-- **V1 GitHub workflow / GitHub 工作流**: Add GitHub Action triggers for `pull_request` events.
+- **GitHub workflow / GitHub 工作流**: Add GitHub Action triggers for `pull_request` events.
 - **PR summary comment / PR 摘要评论**: Publish or update a bot-generated summary comment on the PR.
 - **Specialized reviewers / 多维度 reviewer**: Split the current GeneralReviewer into Bug, Security, Performance, Test, and Maintainability reviewers.
 - **Aggregator / 聚合器**: Deduplicate findings, sort by severity and confidence, and enforce per-category limits.
-- **Configuration file / 配置文件**: Support repository-level `ai-review.yml` for filters, thresholds, model, and reviewer switches.
-- **Evaluation dataset / 评测集**: Build 20+ PR cases with manual labels for valid, partial, invalid, and unknown findings.
+- **Repository config / 仓库级配置**: Support repository-level `ai-review.yml` for filters, thresholds, model, and reviewer switches.
+- **Richer local mode / 更完整的本地模式**: Add staged-only, unstaged-only, and explicit `main..feature` local range support.
+- **Evaluation dataset / 评测集**: Build 20+ PR/commit/compare/local cases with manual labels.
 - **Metrics / 指标统计**: Track JSON valid rate, false positive rate, valid suggestion rate, line accuracy, latency, and cost.
 - **Repository-level RAG / 仓库级 RAG**: Add keyword retrieval, AST/symbol extraction, and optional vector retrieval.
 - **Review history / 审查历史**: Save repeated runs and compare finding changes over time.
@@ -248,11 +272,11 @@ The main story is:
 
 ```text
 AI code review is not just an LLM prompt.
-It is an engineering pipeline around PR diff parsing, repository context,
+It is an engineering pipeline around diff parsing, repository context,
 structured model output, conservative review policy, validation, reporting,
 and eventually evaluation.
 
 AI 代码审查不是简单写一个 prompt。
-它是围绕 PR diff 解析、仓库上下文、结构化模型输出、保守审查策略、
+它是围绕 diff 解析、仓库上下文、结构化模型输出、保守审查策略、
 结果校验、报告生成以及后续评测构建的一套工程化流程。
 ```

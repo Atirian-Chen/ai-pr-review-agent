@@ -1,0 +1,48 @@
+{
+  "pr": {
+    "source_type": "compare",
+    "owner": "octocat",
+    "repo": "Hello-World",
+    "pull_number": null,
+    "identifier": "553c2077f0edc3d5dc5d17262f6aa498e69d6f8e...7044a8a032e85b6ab611033b2ac8af7ce85805b2",
+    "title": "Compare 553c2077f0edc3d5dc5d17262f6aa498e69d6f8e...7044a8a032e85b6ab611033b2ac8af7ce85805b2",
+    "body": "GitHub compare range from 553c2077f0edc3d5dc5d17262f6aa498e69d6f8e to 7044a8a032e85b6ab611033b2ac8af7ce85805b2.",
+    "base_branch": "553c2077f0edc3d5dc5d17262f6aa498e69d6f8e",
+    "head_branch": "7044a8a032e85b6ab611033b2ac8af7ce85805b2",
+    "base_sha": "553c2077f0edc3d5dc5d17262f6aa498e69d6f8e",
+    "head_sha": "7044a8a032e85b6ab611033b2ac8af7ce85805b2",
+    "author": "",
+    "url": "https://github.com/octocat/Hello-World/compare/553c2077f0edc3d5dc5d17262f6aa498e69d6f8e...7044a8a032e85b6ab611033b2ac8af7ce85805b2"
+  },
+  "summary": "Reviewed 1 file(s) in compare target 553c2077f0edc3d5dc5d17262f6aa498e69d6f8e...7044a8a032e85b6ab611033b2ac8af7ce85805b2: The PR adds malformed content to the README file where shell commands and their explanations are concatenated without proper separators, reducing readability.",
+  "findings": [
+    {
+      "id": "finding-2a4e2b4724e5",
+      "file_path": "README",
+      "line_start": 2,
+      "line_end": 6,
+      "category": "maintainability",
+      "severity": "minor",
+      "confidence": 0.95,
+      "title": "Commands and explanations are concatenated without separators in README",
+      "description": "The added instructions in the README combine shell commands and their explanations into single strings without spaces or line breaks, making them difficult to read and potentially confusing.",
+      "evidence": "The diff shows lines like '$ mkdir ~/Hello-WorldCreates a directory for your project called \"Hello-World\" in your user directory' where the command and description are glued together.",
+      "suggestion": "Insert line breaks and spaces to separate commands from their descriptions. For example: '$ mkdir ~/Hello-World' on one line, then 'Creates a directory for your project called \"Hello-World\" in your user directory' on the next line. Alternatively, use proper Markdown formatting.",
+      "suggested_patch": null,
+      "reviewer": "general"
+    }
+  ],
+  "stats": {
+    "target_type": "compare",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 25.733213900006376,
+    "llm_latency_seconds": 23.083482400048524,
+    "total_tokens": 2044
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deepseek-v4-pro"
+  },
+  "trace_id": "a30c3d4a-dfdb-4359-8f99-50e8d30f73d3"
+}

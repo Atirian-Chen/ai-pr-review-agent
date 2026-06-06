@@ -1,0 +1,48 @@
+{
+  "pr": {
+    "source_type": "commit",
+    "owner": "octocat",
+    "repo": "Hello-World",
+    "pull_number": null,
+    "identifier": "7044a8a032e85b6ab611033b2ac8af7ce85805b2",
+    "title": "Edited README via GitHub",
+    "body": null,
+    "base_branch": "553c2077f0ed",
+    "head_branch": "7044a8a032e8",
+    "base_sha": "553c2077f0edc3d5dc5d17262f6aa498e69d6f8e",
+    "head_sha": "7044a8a032e85b6ab611033b2ac8af7ce85805b2",
+    "author": "unoju",
+    "url": "https://github.com/octocat/Hello-World/commit/7044a8a032e85b6ab611033b2ac8af7ce85805b2"
+  },
+  "summary": "Reviewed 1 file(s) in commit target 7044a8a032e85b6ab611033b2ac8af7ce85805b2: The PR adds instructions for Git setup to README, but the formatting lacks separation between commands and descriptions, and the file is missing a trailing newline.",
+  "findings": [
+    {
+      "id": "finding-61b0f771fd87",
+      "file_path": "README",
+      "line_start": 2,
+      "line_end": 4,
+      "category": "maintainability",
+      "severity": "minor",
+      "confidence": 0.9,
+      "title": "Commands and descriptions are concatenated without separation",
+      "description": "Lines 2-4 contain shell commands immediately followed by their descriptions with no whitespace or delimiter, making them hard to read and potentially misleading.",
+      "evidence": "Line 2: '$ mkdir ~/Hello-WorldCreates a directory ...' no space after 'Hello-World'. Line 3: '$ cd ~/Hello-WorldChanges ...' no space. Line 4: '$ git initSets up ...' no space.",
+      "suggestion": "Separate the command and description with a space, colon, or put them on separate lines.",
+      "suggested_patch": null,
+      "reviewer": "general"
+    }
+  ],
+  "stats": {
+    "target_type": "commit",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 38.31512670009397,
+    "llm_latency_seconds": 35.916832000017166,
+    "total_tokens": 2546
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deepseek-v4-pro"
+  },
+  "trace_id": "7a41805d-d95a-4db4-913a-bea8a1a94d17"
+}

@@ -13,10 +13,15 @@ class PullRequestRef(BaseModel):
     pull_number: int = Field(gt=0)
 
 
-class PRInfo(BaseModel):
+SourceType = Literal["pull_request", "commit", "compare", "local_diff"]
+
+
+class ReviewTargetInfo(BaseModel):
+    source_type: SourceType = "pull_request"
     owner: str
     repo: str
-    pull_number: int
+    pull_number: int | None = None
+    identifier: str = ""
     title: str
     body: str | None = None
     base_branch: str
@@ -25,6 +30,11 @@ class PRInfo(BaseModel):
     head_sha: str
     author: str
     url: str
+
+
+class PRInfo(ReviewTargetInfo):
+    source_type: Literal["pull_request"] = "pull_request"
+    pull_number: int = Field(gt=0)
 
 
 class ChangedFile(BaseModel):
@@ -43,6 +53,7 @@ def pr_info_from_api(data: dict, owner: str, repo: str) -> PRInfo:
         owner=owner,
         repo=repo,
         pull_number=data["number"],
+        identifier=f"#{data['number']}",
         title=data.get("title") or "",
         body=data.get("body"),
         base_branch=data["base"]["ref"],
@@ -51,6 +62,53 @@ def pr_info_from_api(data: dict, owner: str, repo: str) -> PRInfo:
         head_sha=data["head"]["sha"],
         author=data.get("user", {}).get("login") or "",
         url=data.get("html_url") or "",
+    )
+
+
+def commit_info_from_api(data: dict, owner: str, repo: str) -> ReviewTargetInfo:
+    commit = data.get("commit", {})
+    message = commit.get("message") or data.get("sha", "")
+    title, _, body = message.partition("\n")
+    parent_sha = (data.get("parents") or [{}])[0].get("sha") or data.get("sha") or ""
+    author = (
+        data.get("author", {}).get("login")
+        or commit.get("author", {}).get("name")
+        or ""
+    )
+    sha = data.get("sha") or ""
+    return ReviewTargetInfo(
+        source_type="commit",
+        owner=owner,
+        repo=repo,
+        identifier=sha,
+        title=title or f"Commit {sha[:12]}",
+        body=body or None,
+        base_branch=parent_sha[:12] or "parent",
+        head_branch=sha[:12] or "commit",
+        base_sha=parent_sha,
+        head_sha=sha,
+        author=author,
+        url=data.get("html_url") or f"https://github.com/{owner}/{repo}/commit/{sha}",
+    )
+
+
+def compare_info_from_api(data: dict, owner: str, repo: str, base_ref: str, head_ref: str) -> ReviewTargetInfo:
+    base_sha = data.get("base_commit", {}).get("sha") or base_ref
+    commits = data.get("commits") or []
+    head_sha = commits[-1].get("sha") if commits else base_sha
+    return ReviewTargetInfo(
+        source_type="compare",
+        owner=owner,
+        repo=repo,
+        identifier=f"{base_ref}...{head_ref}",
+        title=f"Compare {base_ref}...{head_ref}",
+        body=f"GitHub compare range from {base_ref} to {head_ref}.",
+        base_branch=base_ref,
+        head_branch=head_ref,
+        base_sha=base_sha,
+        head_sha=head_sha,
+        author="",
+        url=data.get("html_url") or f"https://github.com/{owner}/{repo}/compare/{base_ref}...{head_ref}",
     )
 
 

@@ -11,7 +11,10 @@ from pr_agent.github.models import (
     ChangedFile,
     PRInfo,
     PullRequestRef,
+    ReviewTargetInfo,
     changed_file_from_api,
+    commit_info_from_api,
+    compare_info_from_api,
     pr_info_from_api,
 )
 
@@ -100,6 +103,27 @@ class GitHubClient:
                 break
             page += 1
         return files
+
+    def get_commit(self, owner: str, repo: str, sha: str) -> tuple[ReviewTargetInfo, list[ChangedFile]]:
+        data = self._get_json(f"/repos/{owner}/{repo}/commits/{sha}")
+        if not isinstance(data, dict):
+            raise GitHubAPIError("Unexpected commit response shape")
+        files = [changed_file_from_api(item) for item in data.get("files", [])]
+        return commit_info_from_api(data, owner=owner, repo=repo), files
+
+    def compare_commits(
+        self,
+        owner: str,
+        repo: str,
+        base_ref: str,
+        head_ref: str,
+    ) -> tuple[ReviewTargetInfo, list[ChangedFile]]:
+        compare_spec = f"{quote(base_ref, safe='')}...{quote(head_ref, safe='')}"
+        data = self._get_json(f"/repos/{owner}/{repo}/compare/{compare_spec}")
+        if not isinstance(data, dict):
+            raise GitHubAPIError("Unexpected compare response shape")
+        files = [changed_file_from_api(item) for item in data.get("files", [])]
+        return compare_info_from_api(data, owner=owner, repo=repo, base_ref=base_ref, head_ref=head_ref), files
 
     def get_file_content(self, owner: str, repo: str, path: str, ref: str) -> str | None:
         encoded_path = quote(path, safe="/")

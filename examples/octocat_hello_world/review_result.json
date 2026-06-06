@@ -1,8 +1,10 @@
 {
   "pr": {
+    "source_type": "pull_request",
     "owner": "octocat",
     "repo": "Hello-World",
     "pull_number": 1,
+    "identifier": "#1",
     "title": "Edited README via GitHub",
     "body": "",
     "base_branch": "master",
@@ -12,34 +14,35 @@
     "author": "unoju",
     "url": "https://github.com/octocat/Hello-World/pull/1"
   },
-  "summary": "Reviewed 1 file(s) in PR #1: This PR introduces poorly formatted command descriptions in the README, where shell commands and their explanations are concatenated without spaces, causing readability issues.",
+  "summary": "Reviewed 1 file(s) in pull_request target #1: The README update introduces poorly formatted command examples that may mislead users into executing incorrect commands due to concatenated text.",
   "findings": [
     {
-      "id": "finding-3c75cc31f989",
+      "id": "finding-838cc5235cf5",
       "file_path": "README",
       "line_start": 2,
       "line_end": 6,
-      "category": "maintainability",
+      "category": "bug",
       "severity": "minor",
-      "confidence": 0.95,
-      "title": "Concatenated command and description without spacing",
-      "description": "The added lines incorrectly combine the shell command and its explanation into a single string, making the README confusing and unreadable. For example, '$ mkdir ~/Hello-WorldCreates a directory for your project called \"Hello-World\" in your user directory' should be separated into command and description.",
-      "evidence": "+$ mkdir ~/Hello-WorldCreates a directory for your project called \"Hello-World\" in your user directory",
-      "suggestion": "Separate the command and its description, e.g., using a code block for the command and plain text for the explanation. For example:\n\n```\n$ mkdir ~/Hello-World\n```\nCreates a directory for your project called \"Hello-World\" in your user directory.",
+      "confidence": 0.9,
+      "title": "Commands and descriptions are concatenated causing potential copy-paste errors",
+      "description": "The added lines combine shell commands and output/descriptions without separators, which could lead to incorrect command execution if users copy the entire line. For example, `$ mkdir ~/Hello-WorldCreates a directory...` would attempt to create a directory named 'Hello-WorldCreates...' instead of 'Hello-World'.",
+      "evidence": "Lines 2-4: '$ mkdir ~/Hello-WorldCreates a directory...', '$ cd ~/Hello-WorldChanges...', '$ git initSets up...'",
+      "suggestion": "Format commands and outputs as separate lines or use code blocks to clearly distinguish commands from text.",
       "suggested_patch": null,
       "reviewer": "general"
     }
   ],
   "stats": {
+    "target_type": "pull_request",
     "files_seen": 1,
     "files_reviewed": 1,
-    "latency_seconds": 23.72604139999021,
-    "llm_latency_seconds": 18.410972699988633,
-    "total_tokens": 1563
+    "latency_seconds": 38.744641400058754,
+    "llm_latency_seconds": 35.64129179995507,
+    "total_tokens": 2367
   },
   "model_info": {
     "provider": "openai_compatible",
     "model": "deepseek-v4-pro"
   },
-  "trace_id": "f1606615-0054-42f3-a323-a001f600121d"
+  "trace_id": "871377bb-c252-4513-b5ed-7cba7666cc35"
 }
