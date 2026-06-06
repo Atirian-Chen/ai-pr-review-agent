@@ -37,3 +37,35 @@ new file mode 100644
     assert files[0].status == "added"
     assert files[0].additions == 2
     assert files[0].deletions == 0
+
+
+def test_parse_full_unified_diff_for_filename_with_spaces():
+    diff_text = """diff --git a/foo bar.py b/foo bar.py
+index 1111111..2222222 100644
+--- a/foo bar.py
++++ b/foo bar.py
+@@ -1 +1 @@
+-old
++new"""
+
+    files = parse_full_unified_diff(diff_text)
+
+    assert files[0].filename == "foo bar.py"
+    assert files[0].previous_filename is None
+    assert files[0].additions == 1
+    assert files[0].deletions == 1
+
+
+def test_parse_full_unified_diff_for_quoted_filename_with_spaces():
+    diff_text = '''diff --git "a/foo bar.py" "b/foo bar.py"
+index 1111111..2222222 100644
+--- "a/foo bar.py"
++++ "b/foo bar.py"
+@@ -1 +1 @@
+-old
++new'''
+
+    files = parse_full_unified_diff(diff_text)
+
+    assert files[0].filename == "foo bar.py"
+    assert files[0].previous_filename is None
