@@ -240,6 +240,158 @@ Current test status:
 55 passed
 ```
 
+## Use AI Review in Another GitHub Repository / 在其他 GitHub 仓库使用
+
+本项目可以作为一个独立的 AI Review 工具，被其他 GitHub 仓库通过 GitHub Actions 自动调用。其他仓库不需要复制 `src/` 代码，只需要复制一个 workflow yml。
+
+### 1. Copy the workflow / 复制 workflow
+
+在本仓库中找到示例文件：
+
+```text
+examples/external_repo_github_action/ai-review.yml
+```
+
+把它复制到目标仓库的这个位置：
+
+```text
+.github/workflows/ai-review.yml
+```
+
+复制完成后，目标仓库结构应类似：
+
+```text
+target-repo/
+  .github/
+    workflows/
+      ai-review.yml
+```
+
+### 2. What the workflow does / 这个 yml 做什么
+
+当前示例会在目标仓库发生以下事件时自动运行：
+
+```yaml
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+```
+
+含义：
+
+- `push`: 任意分支 push 后触发，review 本次 push 的 `before...after` 变更范围，并把 summary comment 发到本次 push 的 head commit。
+- `pull_request.opened`: 新建 PR 后触发，review 这个 PR。
+- `pull_request.synchronize`: PR 分支新增 commit 后触发，重新 review 这个 PR。
+- `pull_request.reopened`: PR 重新打开后触发。
+- `pull_request.ready_for_review`: draft PR 变成 ready 后触发。
+
+### 3. Tool installation / 工具安装来源
+
+示例 yml 会从本工具仓库安装 AI Review Agent：
+
+```yaml
+run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@version1"
+```
+
+因此，示例 yml 的可用前提是：
+
+- `Atirian-Chen/ai-pr-review-agent` 对目标仓库的 GitHub Actions runner 可访问。
+- `version1` 分支或 tag 已经推送到 GitHub。
+
+如果你后续改用新的 release/tag，例如 `v1.0.0`，把安装行改成：
+
+```yaml
+run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@v1.0.0"
+```
+
+如果本工具仓库是 private，目标仓库还需要额外配置读取本工具仓库的 token；public 仓库不需要。
+
+### 4. Required GitHub Secret / 目标仓库必须配置的 Secret
+
+每个使用该工具的目标仓库都必须配置：
+
+```text
+OPENAI_API_KEY
+```
+
+配置位置：
+
+```text
+Target repository -> Settings -> Secrets and variables -> Actions -> New repository secret
+```
+
+Secret 名称填：
+
+```text
+OPENAI_API_KEY
+```
+
+Secret 值填模型服务商提供的 API key。
+
+`GITHUB_TOKEN` 不需要手动创建，GitHub Actions 会自动提供：
+
+```yaml
+GITHUB_TOKEN: ${{ github.token }}
+```
+
+### 5. Adjustable parameters / yml 中可调参数
+
+示例 yml 中模型相关参数是明文写在 workflow 里的：
+
+```yaml
+OPENAI_BASE_URL: https://api.deepseek.com
+OPENAI_MODEL: deepseek-v4-pro
+OPENAI_TIMEOUT_SECONDS: "500"
+```
+
+含义：
+
+- `OPENAI_BASE_URL`: OpenAI-compatible API 地址。
+- `OPENAI_MODEL`: 使用的模型名。
+- `OPENAI_TIMEOUT_SECONDS`: 单次 LLM 请求超时时间，单位是秒。
+
+如果使用官方 OpenAI API，可以改成：
+
+```yaml
+OPENAI_BASE_URL: https://api.openai.com/v1
+OPENAI_MODEL: gpt-4.1-mini
+OPENAI_TIMEOUT_SECONDS: "120"
+```
+
+如果使用 DeepSeek 或其他兼容服务，保持服务商要求的 URL 和模型名即可。
+
+### 6. Required permissions / workflow 权限
+
+示例 yml 需要这些权限：
+
+```yaml
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+```
+
+含义：
+
+- `contents: write`: 允许在 push 场景给 head commit 写 commit comment。
+- `issues: write`: 允许在 PR conversation 中创建或更新 summary comment。
+- `pull-requests: read`: 允许读取 PR 元数据和变更文件。
+
+### 7. Expected result / 运行结果
+
+配置完成后：
+
+- 目标仓库 push 后，会自动 review 本次 push 的变更，并评论到最后一次 commit。
+- 目标仓库 PR 创建或更新后，会自动 review PR，并在 PR conversation 中创建或更新一条 AI Review Summary。
+- 每次运行都会上传 `outputs/github-action` 作为 GitHub Actions artifact，里面包含 `review_result.json`、`review_report.md`、`trace.jsonl` 和 `summary_comment.md`。
+
 Troubleshooting:
 
 故障排查：
