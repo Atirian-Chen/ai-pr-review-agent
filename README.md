@@ -375,14 +375,14 @@ OPENAI_TIMEOUT_SECONDS: "120"
 permissions:
   contents: write
   issues: write
-  pull-requests: read
+  pull-requests: write
 ```
 
 含义：
 
 - `contents: write`: 允许在 push 场景给 head commit 写 commit comment。
 - `issues: write`: 允许在 PR conversation 中创建或更新 summary comment。
-- `pull-requests: read`: 允许读取 PR 元数据和变更文件。
+- `pull-requests: write`: 允许读取 PR 元数据，并在 PR 场景下发布或更新 summary comment。
 
 ### 7. Expected result / 运行结果
 

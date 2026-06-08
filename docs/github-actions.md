@@ -19,7 +19,7 @@ The workflow passes GitHub's built-in token as `GITHUB_TOKEN`.
 
 - `contents: write`: required for commit comments on push events.
 - `issues: write`: required for PR conversation comments.
-- `pull-requests: read`: required to read PR metadata.
+- `pull-requests: write`: required to read PR metadata and publish PR summary comments.
 
 ## Local Dry Run
 
