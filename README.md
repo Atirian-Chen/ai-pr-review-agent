@@ -297,18 +297,18 @@ on:
 示例 yml 会从本工具仓库安装 AI Review Agent：
 
 ```yaml
-run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@version1"
+run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@v1.0.0"
 ```
 
 因此，示例 yml 的可用前提是：
 
 - `Atirian-Chen/ai-pr-review-agent` 对目标仓库的 GitHub Actions runner 可访问。
-- `version1` 分支或 tag 已经推送到 GitHub。
+- `v1.0.0` tag 已经推送到 GitHub。
 
-如果你后续改用新的 release/tag，例如 `v1.0.0`，把安装行改成：
+如果你后续改用新的 release/tag，例如 `v1.1.0`，把安装行改成：
 
 ```yaml
-run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@v1.0.0"
+run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@v1.1.0"
 ```
 
 如果本工具仓库是 private，目标仓库还需要额外配置读取本工具仓库的 token；public 仓库不需要。
