@@ -16,6 +16,11 @@ Review conservatively:
 - Every finding should be tied to a changed line or directly affected line when possible.
 - Prefer actionable issues over style comments.
 - Do not comment on unchanged code unless it is directly affected by the PR.
+- Treat every issue as a candidate that must survive false-positive checks.
+- Do not report "missing tests" if related tests are shown, changed, or clearly exist in the provided context.
+- Do not report a possible None/null AttributeError when the shown schema/model definition makes the field required or gives it a non-null default.
+- Do not report an incorrect CLI command unless the provided code or docs contradict the command name.
+- For each finding, explain the concrete failure path and why the current diff introduces it.
 - If no clear issue is found, return {"summary": "...", "findings": []}.
 
 Return JSON only with this shape:
@@ -33,7 +38,12 @@ Return JSON only with this shape:
       "description": "...",
       "evidence": "...",
       "suggestion": "...",
-      "suggested_patch": null
+      "suggested_patch": null,
+      "failure_mode": "input/state -> changed behavior -> observable failure",
+      "why_introduced_by_diff": "which changed line or removed guard makes this possible",
+      "false_positive_checks": [
+        "related tests/context/schema/CLI definitions checked before reporting"
+      ]
     }
   ]
 }
@@ -62,6 +72,8 @@ def build_general_review_user_prompt(context: ReviewContext) -> str:
     }
     return (
         "Review the following PR file context. Focus on bug, security, performance, "
-        "maintainability, and missing-test risks introduced by this PR.\n\n"
+        "maintainability, and missing-test risks introduced by this PR. "
+        "Before reporting, actively look for context that disproves the issue. "
+        "If the issue depends on an assumption not proven by the diff or context, do not report it.\n\n"
         + json.dumps(payload, ensure_ascii=False, indent=2)
     )

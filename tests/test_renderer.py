@@ -58,3 +58,25 @@ def test_renderer_with_findings():
     assert "[Minor][test] Missing edge-case test" in report
     assert "Add a test for the error path." in report
     assert "test-model" in report
+
+
+def test_renderer_includes_verification_metrics():
+    result = ReviewResult(
+        pr=make_pr(),
+        summary="Looks good.",
+        findings=[],
+        stats={
+            "verification": {
+                "candidate_findings": 3,
+                "suppressed_findings": 2,
+                "published_findings": 1,
+            }
+        },
+        model_info={"model": "test-model"},
+    )
+
+    report = MarkdownRenderer().render(result)
+
+    assert "Candidate findings: 3" in report
+    assert "Suppressed candidates: 2" in report
+    assert "Published findings: 1" in report

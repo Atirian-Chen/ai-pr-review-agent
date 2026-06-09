@@ -42,6 +42,14 @@ class LLMSettings(BaseModel):
     timeout_seconds: float = 120.0
 
 
+class VerifierLLMSettings(LLMSettings):
+    enabled: bool = True
+    model: str = "gpt-4.1-mini"
+    temperature: float = 0.0
+    max_output_tokens: int = 2000
+    timeout_seconds: float = 60.0
+
+
 class GitHubSettings(BaseModel):
     api_base_url: str = "https://api.github.com"
     timeout_seconds: float = 30.0
@@ -52,6 +60,7 @@ class AppConfig(BaseModel):
     filters: FilterSettings = Field(default_factory=FilterSettings)
     context: ContextSettings = Field(default_factory=ContextSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
+    verifier_llm: VerifierLLMSettings = Field(default_factory=VerifierLLMSettings)
     github: GitHubSettings = Field(default_factory=GitHubSettings)
 
 

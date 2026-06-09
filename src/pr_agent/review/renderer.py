@@ -50,21 +50,33 @@ class MarkdownRenderer:
             lines.append("No specific test gaps were identified.")
 
         severity_counts = Counter(finding.severity for finding in result.findings)
-        lines.extend(
-            [
-                "",
-                "## Metrics",
-                f"- Findings: {len(result.findings)}",
-                f"- Critical: {severity_counts.get('critical', 0)}",
-                f"- Major: {severity_counts.get('major', 0)}",
-                f"- Minor: {severity_counts.get('minor', 0)}",
-                f"- Nit: {severity_counts.get('nit', 0)}",
-                f"- Model: {result.model_info.get('model', 'unknown')}",
-                f"- Latency seconds: {result.stats.get('latency_seconds', 0):.2f}",
-                f"- Estimated tokens: {result.stats.get('total_tokens', 0)}",
-                "",
-            ]
-        )
+        verification = result.stats.get("verification") or {}
+        llm_verifier = result.stats.get("llm_verifier") or {}
+        metrics = [
+            "",
+            "## Metrics",
+            f"- Findings: {len(result.findings)}",
+            f"- Critical: {severity_counts.get('critical', 0)}",
+            f"- Major: {severity_counts.get('major', 0)}",
+            f"- Minor: {severity_counts.get('minor', 0)}",
+            f"- Nit: {severity_counts.get('nit', 0)}",
+            f"- Model: {result.model_info.get('model', 'unknown')}",
+            f"- Latency seconds: {result.stats.get('latency_seconds', 0):.2f}",
+            f"- Estimated tokens: {result.stats.get('total_tokens', 0)}",
+        ]
+        if llm_verifier:
+            verifier_label = llm_verifier.get("model") or llm_verifier.get("status", "unknown")
+            metrics.append(f"- Verifier: {verifier_label}")
+        if verification:
+            metrics.extend(
+                [
+                    f"- Candidate findings: {verification.get('candidate_findings', 0)}",
+                    f"- Suppressed candidates: {verification.get('suppressed_findings', 0)}",
+                    f"- Published findings: {verification.get('published_findings', len(result.findings))}",
+                ]
+            )
+        metrics.append("")
+        lines.extend(metrics)
         return "\n".join(lines)
 
     def _risk_level(self, result: ReviewResult) -> str:

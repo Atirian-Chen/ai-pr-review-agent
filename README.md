@@ -86,7 +86,7 @@ Most toy AI code review demos stop at "send the diff to an LLM and ask for comme
 - **Conservative reviewer / 保守审查 Agent**: Prompts the LLM to report only issues supported by diff or context.
 - **Structured findings / 结构化建议**: Uses `ReviewFinding` and `ReviewResult` schemas for reliable downstream processing.
 - **JSON recovery / JSON 输出恢复**: Handles plain JSON, fenced JSON, JSON embedded in text, and one-shot JSON repair.
-- **Quality gates / 质量过滤**: Filters low-confidence findings, invalid file paths, weak evidence, hallucinated line numbers, and low-value style nits.
+- **Quality gates / 质量过滤**: Filters low-confidence findings, invalid file paths, weak evidence, hallucinated line numbers, deterministic false positives, LLM-verifier rejections, and low-value style nits.
 - **Markdown report / Markdown 报告**: Renders readable review reports for demos and portfolio presentation.
 - **GitHub Actions review / GitHub Actions 自动审查**: Resolves `pull_request` and `push` events, runs review, uploads artifacts, and publishes summary comments.
 - **Evaluation dataset / 评测数据集**: Provides 50 labeled JSONL cases and an `eval-dataset` command for coverage and scoring.
@@ -170,6 +170,10 @@ OPENAI_API_KEY=your_openai_or_compatible_api_key
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_TIMEOUT_SECONDS=120
+VERIFIER_OPENAI_API_KEY=your_verifier_openai_or_compatible_api_key
+VERIFIER_OPENAI_BASE_URL=https://api.openai.com/v1
+VERIFIER_OPENAI_MODEL=gpt-4.1-mini
+VERIFIER_OPENAI_TIMEOUT_SECONDS=60
 ```
 
 Fetch metadata and structured diff only:
@@ -319,6 +323,7 @@ run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-age
 
 ```text
 OPENAI_API_KEY
+VERIFIER_OPENAI_API_KEY
 ```
 
 配置位置：
@@ -335,6 +340,14 @@ OPENAI_API_KEY
 
 Secret 值填模型服务商提供的 API key。
 
+如果启用 LLM verifier，再新增一个 secret：
+
+```text
+VERIFIER_OPENAI_API_KEY
+```
+
+这个 key 专门给第二遍验证模型使用。没有配置时，工具仍会运行确定性 verifier，但会在结果统计里把 LLM verifier 标记为 skipped。
+
 `GITHUB_TOKEN` 不需要手动创建，GitHub Actions 会自动提供：
 
 ```yaml
@@ -349,13 +362,19 @@ GITHUB_TOKEN: ${{ github.token }}
 OPENAI_BASE_URL: https://api.deepseek.com
 OPENAI_MODEL: deepseek-v4-pro
 OPENAI_TIMEOUT_SECONDS: "500"
+VERIFIER_OPENAI_BASE_URL: https://api.deepseek.com
+VERIFIER_OPENAI_MODEL: deepseek-chat
+VERIFIER_OPENAI_TIMEOUT_SECONDS: "120"
 ```
 
 含义：
 
 - `OPENAI_BASE_URL`: OpenAI-compatible API 地址。
-- `OPENAI_MODEL`: 使用的模型名。
-- `OPENAI_TIMEOUT_SECONDS`: 单次 LLM 请求超时时间，单位是秒。
+- `OPENAI_MODEL`: 主 reviewer 使用的模型名，建议使用更强的推理模型。
+- `OPENAI_TIMEOUT_SECONDS`: 主 reviewer 单次 LLM 请求超时时间，单位是秒。
+- `VERIFIER_OPENAI_BASE_URL`: LLM verifier 使用的 OpenAI-compatible API 地址。
+- `VERIFIER_OPENAI_MODEL`: 第二遍验证模型，建议使用 mini、flash、chat 等更便宜更快的模型。
+- `VERIFIER_OPENAI_TIMEOUT_SECONDS`: LLM verifier 单次请求超时时间，单位是秒。
 
 如果使用官方 OpenAI API，可以改成：
 
@@ -363,6 +382,9 @@ OPENAI_TIMEOUT_SECONDS: "500"
 OPENAI_BASE_URL: https://api.openai.com/v1
 OPENAI_MODEL: gpt-4.1-mini
 OPENAI_TIMEOUT_SECONDS: "120"
+VERIFIER_OPENAI_BASE_URL: https://api.openai.com/v1
+VERIFIER_OPENAI_MODEL: gpt-4.1-mini
+VERIFIER_OPENAI_TIMEOUT_SECONDS: "60"
 ```
 
 如果使用 DeepSeek 或其他兼容服务，保持服务商要求的 URL 和模型名即可。
@@ -398,7 +420,7 @@ Troubleshooting:
 
 If dependency installation fails on Windows MSYS/Git Bash with a `pydantic-core` build error, create the virtual environment with a standard CPython 3.11+ interpreter, for example the Python Launcher (`py -3.11 -m venv .venv-win`) or the installer from python.org.
 
-If `review` fails with `ReadTimeout`, `LLM API request timed out`, or a provider-specific timeout, the LLM provider did not finish sending the response before the timeout. Increase `OPENAI_TIMEOUT_SECONDS` in `.env` or `llm.timeout_seconds` in `configs/default.yml`, then retry.
+If `review` fails with `ReadTimeout`, `LLM API request timed out`, or a provider-specific timeout, the LLM provider did not finish sending the response before the timeout. Increase `OPENAI_TIMEOUT_SECONDS` / `VERIFIER_OPENAI_TIMEOUT_SECONDS` in `.env`, or the matching `timeout_seconds` value in `configs/default.yml`, then retry.
 
 如果在 Windows MSYS/Git Bash 环境中安装依赖时遇到 `pydantic-core` 构建错误，建议改用标准 CPython 3.11+ 创建虚拟环境，例如 Python Launcher（`py -3.11 -m venv .venv-win`）或 python.org 安装版。
 

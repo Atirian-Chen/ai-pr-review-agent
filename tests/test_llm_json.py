@@ -37,6 +37,21 @@ def test_from_env_uses_timeout_override(monkeypatch):
     client._client.close()
 
 
+def test_from_env_supports_verifier_prefix(monkeypatch):
+    monkeypatch.setenv("VERIFIER_OPENAI_API_KEY", "verifier-key")
+    monkeypatch.setenv("VERIFIER_OPENAI_BASE_URL", "https://verifier.example/v1")
+    monkeypatch.setenv("VERIFIER_OPENAI_MODEL", "verifier-mini")
+    monkeypatch.setenv("VERIFIER_OPENAI_TIMEOUT_SECONDS", "3.5")
+
+    client = OpenAICompatibleLLMClient.from_env(LLMSettings(timeout_seconds=42.0), env_prefix="VERIFIER_OPENAI")
+
+    assert client.api_key == "verifier-key"
+    assert client.base_url == "https://verifier.example/v1"
+    assert client.model == "verifier-mini"
+    assert client.timeout_seconds == 3.5
+    client._client.close()
+
+
 def test_complete_json_wraps_httpx_timeout():
     import httpx
 

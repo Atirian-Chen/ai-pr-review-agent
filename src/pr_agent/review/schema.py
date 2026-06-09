@@ -26,6 +26,9 @@ class ReviewFinding(BaseModel):
     evidence: str
     suggestion: str
     suggested_patch: str | None = None
+    failure_mode: str | None = None
+    why_introduced_by_diff: str | None = None
+    false_positive_checks: list[str] = Field(default_factory=list)
     reviewer: str
 
     @field_validator("title", "description", "evidence", "suggestion")
