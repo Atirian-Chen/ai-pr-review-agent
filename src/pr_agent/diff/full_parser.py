@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import re
+import shlex
+
 from pr_agent.github.models import ChangedFile
+
+
+DIFF_GIT_RE = re.compile(r"^a/(?P<old>.*) b/(?P<new>.*)$")
 
 
 def parse_full_unified_diff(diff_text: str) -> list[ChangedFile]:
@@ -53,9 +59,9 @@ class _FilePatch:
     @classmethod
     def from_diff_git_line(cls, line: str) -> "_FilePatch":
         # 形如：diff --git a/src/app.py b/src/app.py
-        parts = line.split()
-        new_path = _strip_diff_path(parts[3]) if len(parts) >= 4 else ""
-        old_path = _strip_diff_path(parts[2]) if len(parts) >= 3 else None
+        old_token, new_token = _split_diff_git_paths(line)
+        new_path = _strip_diff_path(new_token)
+        old_path = _strip_diff_path(old_token) if old_token else None
         return cls(filename=new_path, previous_filename=old_path if old_path != new_path else None)
 
     def to_changed_file(self) -> ChangedFile:
@@ -81,8 +87,37 @@ class _FilePatch:
 
 
 def _strip_diff_path(path: str) -> str:
+    path = _unquote_diff_path(path)
     if path == "/dev/null":
         return path
     if path.startswith("a/") or path.startswith("b/"):
         return path[2:]
     return path
+
+
+def _split_diff_git_paths(line: str) -> tuple[str | None, str]:
+    rest = line.removeprefix("diff --git ").strip()
+    if rest.startswith('"'):
+        parts = shlex.split(rest)
+        if len(parts) >= 2:
+            return parts[0], parts[1]
+
+    match = DIFF_GIT_RE.match(rest)
+    if match:
+        return f"a/{match.group('old')}", f"b/{match.group('new')}"
+
+    parts = rest.split(maxsplit=1)
+    if len(parts) == 2:
+        return parts[0], parts[1]
+    return None, parts[0] if parts else ""
+
+
+def _unquote_diff_path(path: str) -> str:
+    stripped = path.strip()
+    if not stripped.startswith('"'):
+        return stripped
+    try:
+        parts = shlex.split(stripped)
+    except ValueError:
+        return stripped.strip('"')
+    return parts[0] if parts else stripped.strip('"')

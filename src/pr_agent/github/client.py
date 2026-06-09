@@ -81,6 +81,33 @@ class GitHubClient:
             )
         return response.json()
 
+    def _post_json(self, path: str, payload: dict) -> dict:
+        response = self._client.post(
+            f"{self.api_base_url}{path}",
+            headers=self._headers(),
+            json=payload,
+        )
+        return self._decode_mutation_response(response)
+
+    def _patch_json(self, path: str, payload: dict) -> dict:
+        response = self._client.patch(
+            f"{self.api_base_url}{path}",
+            headers=self._headers(),
+            json=payload,
+        )
+        return self._decode_mutation_response(response)
+
+    def _decode_mutation_response(self, response: Any) -> dict:
+        if response.status_code >= 400:
+            raise GitHubAPIError(
+                f"GitHub API error {response.status_code}: {response.text[:500]}",
+                status_code=response.status_code,
+            )
+        data = response.json()
+        if not isinstance(data, dict):
+            raise GitHubAPIError("Unexpected GitHub mutation response shape")
+        return data
+
     def get_pull_request(self, owner: str, repo: str, pull_number: int) -> PRInfo:
         data = self._get_json(f"/repos/{owner}/{repo}/pulls/{pull_number}")
         if not isinstance(data, dict):
@@ -140,3 +167,30 @@ class GitHubClient:
                 status_code=response.status_code,
             )
         return response.text
+
+    def list_issue_comments(self, owner: str, repo: str, issue_number: int) -> list[dict]:
+        comments: list[dict] = []
+        page = 1
+        while True:
+            data = self._get_json(
+                f"/repos/{owner}/{repo}/issues/{issue_number}/comments",
+                params={"per_page": 100, "page": page},
+            )
+            if not isinstance(data, list):
+                raise GitHubAPIError("Unexpected issue comments response shape")
+            comments.extend(item for item in data if isinstance(item, dict))
+            if len(data) < 100:
+                break
+            page += 1
+        return comments
+
+    def upsert_issue_comment(self, owner: str, repo: str, issue_number: int, body: str, marker: str) -> dict:
+        for comment in self.list_issue_comments(owner, repo, issue_number):
+            comment_body = str(comment.get("body") or "")
+            comment_id = comment.get("id")
+            if marker in comment_body and comment_id:
+                return self._patch_json(f"/repos/{owner}/{repo}/issues/comments/{comment_id}", {"body": body})
+        return self._post_json(f"/repos/{owner}/{repo}/issues/{issue_number}/comments", {"body": body})
+
+    def create_commit_comment(self, owner: str, repo: str, commit_sha: str, body: str) -> dict:
+        return self._post_json(f"/repos/{owner}/{repo}/commits/{commit_sha}/comments", {"body": body})
