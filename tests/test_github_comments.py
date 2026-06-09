@@ -83,3 +83,27 @@ def test_build_summary_comment_truncates_findings():
     comment = build_summary_comment(result, max_findings=2)
 
     assert "3 additional finding(s) omitted" in comment
+
+
+def test_build_summary_comment_includes_verification_metrics():
+    result = ReviewResult(
+        pr=_pr(),
+        summary="Looks good.",
+        findings=[],
+        stats={
+            "files_seen": 2,
+            "files_reviewed": 2,
+            "verification": {
+                "candidate_findings": 4,
+                "suppressed_findings": 3,
+                "published_findings": 1,
+            },
+        },
+        model_info={"model": "test-model"},
+    )
+
+    comment = build_summary_comment(result)
+
+    assert "Candidate findings: 4" in comment
+    assert "Suppressed candidates: 3" in comment
+    assert "Published findings: 1" in comment

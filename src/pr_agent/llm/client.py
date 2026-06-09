@@ -78,9 +78,11 @@ class OpenAICompatibleLLMClient(LLMClient):
         max_output_tokens: int = 3000,
         timeout_seconds: float = 120.0,
         client: Any | None = None,
+        api_key_name: str = "OPENAI_API_KEY",
     ) -> None:
         if not api_key:
-            raise LLMAPIError("OPENAI_API_KEY is required for review mode")
+            raise LLMAPIError(f"{api_key_name} is required for review mode")
+        self.timeout_env_name = api_key_name.removesuffix("_API_KEY") + "_TIMEOUT_SECONDS"
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -97,14 +99,19 @@ class OpenAICompatibleLLMClient(LLMClient):
             self._client = httpx.Client(timeout=timeout_seconds)
 
     @classmethod
-    def from_env(cls, settings: LLMSettings) -> "OpenAICompatibleLLMClient":
+    def from_env(cls, settings: LLMSettings, env_prefix: str = "OPENAI") -> "OpenAICompatibleLLMClient":
+        api_key_name = f"{env_prefix}_API_KEY"
+        base_url_name = f"{env_prefix}_BASE_URL"
+        model_name = f"{env_prefix}_MODEL"
+        timeout_name = f"{env_prefix}_TIMEOUT_SECONDS"
         return cls(
-            api_key=os.getenv("OPENAI_API_KEY", ""),
-            base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-            model=os.getenv("OPENAI_MODEL", settings.model),
+            api_key=os.getenv(api_key_name, ""),
+            base_url=os.getenv(base_url_name, "https://api.openai.com/v1"),
+            model=os.getenv(model_name, settings.model),
             temperature=settings.temperature,
             max_output_tokens=settings.max_output_tokens,
-            timeout_seconds=_env_float("OPENAI_TIMEOUT_SECONDS", settings.timeout_seconds),
+            timeout_seconds=_env_float(timeout_name, settings.timeout_seconds),
+            api_key_name=api_key_name,
         )
 
     def complete_json(self, system_prompt: str, user_prompt: str) -> LLMJsonResponse:
@@ -179,7 +186,7 @@ class OpenAICompatibleLLMClient(LLMClient):
             if exc.__class__.__module__.startswith("httpx") and "Timeout" in exc.__class__.__name__:
                 raise LLMAPIError(
                     f"LLM API request timed out after {self.timeout_seconds} seconds. "
-                    "Increase OPENAI_TIMEOUT_SECONDS or llm.timeout_seconds and retry."
+                    f"Increase {self.timeout_env_name} or the matching config timeout_seconds and retry."
                 ) from exc
             raise
         if response.status_code >= 400:

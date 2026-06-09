@@ -13,6 +13,8 @@ SUMMARY_COMMENT_MARKER = "<!-- ai-pr-review-agent:summary-comment -->"
 def build_summary_comment(result: ReviewResult, max_findings: int = 8) -> str:
     target = result.pr
     severity_counts = Counter(finding.severity for finding in result.findings)
+    verification = result.stats.get("verification") or {}
+    llm_verifier = result.stats.get("llm_verifier") or {}
     lines = [
         SUMMARY_COMMENT_MARKER,
         "## AI Review Summary",
@@ -26,12 +28,27 @@ def build_summary_comment(result: ReviewResult, max_findings: int = 8) -> str:
         f"- Minor: {severity_counts.get('minor', 0)}",
         f"- Nit: {severity_counts.get('nit', 0)}",
         f"- Model: {result.model_info.get('model', 'unknown')}",
-        "",
-        "### Summary",
-        result.summary.strip() or "No summary was generated.",
-        "",
-        "### Findings",
     ]
+    if llm_verifier:
+        verifier_label = llm_verifier.get("model") or llm_verifier.get("status", "unknown")
+        lines.append(f"- Verifier: {verifier_label}")
+    if verification:
+        lines.extend(
+            [
+                f"- Candidate findings: {verification.get('candidate_findings', 0)}",
+                f"- Suppressed candidates: {verification.get('suppressed_findings', 0)}",
+                f"- Published findings: {verification.get('published_findings', len(result.findings))}",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "### Summary",
+            result.summary.strip() or "No summary was generated.",
+            "",
+            "### Findings",
+        ]
+    )
 
     if not result.findings:
         lines.append("No high-confidence issues were found.")

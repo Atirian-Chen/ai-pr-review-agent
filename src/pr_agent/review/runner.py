@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -16,9 +17,11 @@ from pr_agent.diff.filters import should_review_file
 from pr_agent.github.client import GitHubClient
 from pr_agent.github.models import ChangedFile
 from pr_agent.llm.client import OpenAICompatibleLLMClient
+from pr_agent.review.llm_verifier import verify_findings_with_llm
 from pr_agent.review.renderer import MarkdownRenderer
 from pr_agent.review.schema import ReviewFinding, ReviewResult
 from pr_agent.review.validator import validate_findings
+from pr_agent.review.verifier import verify_findings
 from pr_agent.targets.loader import ChangeSetLoader
 from pr_agent.targets.models import ChangeSet
 
@@ -87,11 +90,25 @@ def run_review(target: str, cfg: AppConfig, repo_root: Path | None = None) -> Re
         trace_id=trace_id,
     )
     all_hunks = [hunk for hunks in change_set.hunks_by_file.values() for hunk in hunks]
-    result = validate_findings(
+    structurally_valid_result = validate_findings(
         raw_result,
         all_hunks,
         confidence_threshold=cfg.review.confidence_threshold,
+        max_findings=max(cfg.review.max_findings * 4, 32),
+    )
+    deterministic_result = verify_findings(
+        structurally_valid_result,
+        change_set,
+        root,
+        max_findings=max(cfg.review.max_findings * 4, 32),
+    )
+    verifier_llm_client, verifier_skip_reason = _build_verifier_llm_client(cfg)
+    result = verify_findings_with_llm(
+        deterministic_result,
+        change_set,
+        verifier_llm_client,
         max_findings=cfg.review.max_findings,
+        skip_reason=verifier_skip_reason,
     )
     return ReviewRun(result=result, change_set=change_set, reviewable_files=reviewable_files, trace_rows=trace_rows)
 
@@ -116,3 +133,14 @@ def _merge_summaries(summaries: list[str], change_set: ChangeSet, files_reviewed
     if not summaries:
         return f"Reviewed {target.source_type} target {target.identifier}; no reviewable files were processed."
     return f"Reviewed {files_reviewed} file(s) in {target.source_type} target {target.identifier}: " + " ".join(summaries[:3])
+
+
+def _build_verifier_llm_client(cfg: AppConfig) -> tuple[OpenAICompatibleLLMClient | None, str | None]:
+    if not cfg.verifier_llm.enabled:
+        return None, "verifier_llm.enabled is false"
+    if not os.getenv("VERIFIER_OPENAI_API_KEY"):
+        return None, "VERIFIER_OPENAI_API_KEY is not configured"
+    try:
+        return OpenAICompatibleLLMClient.from_env(cfg.verifier_llm, env_prefix="VERIFIER_OPENAI"), None
+    except Exception as exc:
+        return None, f"verifier LLM setup failed: {exc.__class__.__name__}: {exc}"

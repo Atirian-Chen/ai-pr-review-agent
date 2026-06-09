@@ -52,6 +52,11 @@ def _normalize_finding(item: dict[str, Any], fallback_file_path: str) -> dict[st
     title = str(item.get("title") or "Untitled finding")
     category = item.get("category") or "maintainability"
     line_start = item.get("line_start")
+    false_positive_checks = item.get("false_positive_checks") or []
+    if isinstance(false_positive_checks, str):
+        false_positive_checks = [false_positive_checks]
+    elif not isinstance(false_positive_checks, list):
+        false_positive_checks = []
     fingerprint = hashlib.sha1(f"{file_path}:{category}:{line_start}:{title}".encode("utf-8")).hexdigest()[:12]
     return {
         "id": item.get("id") or f"finding-{fingerprint}",
@@ -66,5 +71,8 @@ def _normalize_finding(item: dict[str, Any], fallback_file_path: str) -> dict[st
         "evidence": item.get("evidence") or "",
         "suggestion": item.get("suggestion") or "",
         "suggested_patch": item.get("suggested_patch"),
+        "failure_mode": item.get("failure_mode"),
+        "why_introduced_by_diff": item.get("why_introduced_by_diff"),
+        "false_positive_checks": false_positive_checks,
         "reviewer": item.get("reviewer") or "general",
     }
