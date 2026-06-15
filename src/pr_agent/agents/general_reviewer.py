@@ -47,7 +47,7 @@ class GeneralReviewer:
         return summary, findings, stats
 
 
-def _normalize_finding(item: dict[str, Any], fallback_file_path: str) -> dict[str, Any]:
+def _normalize_finding(item: dict[str, Any], fallback_file_path: str, default_reviewer: str = "general") -> dict[str, Any]:
     file_path = item.get("file_path") or fallback_file_path
     title = str(item.get("title") or "Untitled finding")
     category = item.get("category") or "maintainability"
@@ -57,6 +57,8 @@ def _normalize_finding(item: dict[str, Any], fallback_file_path: str) -> dict[st
         false_positive_checks = [false_positive_checks]
     elif not isinstance(false_positive_checks, list):
         false_positive_checks = []
+    patch_suggestion = _normalize_patch_suggestion(item)
+    test_suggestions = _normalize_test_suggestions(item)
     fingerprint = hashlib.sha1(f"{file_path}:{category}:{line_start}:{title}".encode("utf-8")).hexdigest()[:12]
     return {
         "id": item.get("id") or f"finding-{fingerprint}",
@@ -74,5 +76,55 @@ def _normalize_finding(item: dict[str, Any], fallback_file_path: str) -> dict[st
         "failure_mode": item.get("failure_mode"),
         "why_introduced_by_diff": item.get("why_introduced_by_diff"),
         "false_positive_checks": false_positive_checks,
-        "reviewer": item.get("reviewer") or "general",
+        "patch_suggestion": patch_suggestion,
+        "test_suggestions": test_suggestions,
+        "reviewer": item.get("reviewer") or default_reviewer,
     }
+
+
+def _normalize_patch_suggestion(item: dict[str, Any]) -> dict[str, Any] | None:
+    raw = item.get("patch_suggestion")
+    if isinstance(raw, dict):
+        return {
+            "description": raw.get("description") or item.get("suggestion") or "Apply the suggested fix.",
+            "suggested_patch": raw.get("suggested_patch") or item.get("suggested_patch"),
+            "commands": _string_list(raw.get("commands")),
+        }
+    if item.get("suggested_patch"):
+        return {
+            "description": item.get("suggestion") or "Apply the suggested patch.",
+            "suggested_patch": item.get("suggested_patch"),
+            "commands": [],
+        }
+    return None
+
+
+def _normalize_test_suggestions(item: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = item.get("test_suggestions") or []
+    if isinstance(raw, dict):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+
+    suggestions: list[dict[str, Any]] = []
+    for suggestion in raw:
+        if not isinstance(suggestion, dict):
+            continue
+        suggestions.append(
+            {
+                "test_file_path": suggestion.get("test_file_path"),
+                "test_name": suggestion.get("test_name") or "test_new_behavior",
+                "scenario": suggestion.get("scenario") or suggestion.get("description") or "Cover the changed behavior.",
+                "assertions": _string_list(suggestion.get("assertions")),
+                "suggested_test_code": suggestion.get("suggested_test_code"),
+            }
+        )
+    return suggestions
+
+
+def _string_list(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if item is not None and str(item).strip()]

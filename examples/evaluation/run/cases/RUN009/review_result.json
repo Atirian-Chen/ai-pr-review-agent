@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN009",
+    "pull_number": null,
+    "identifier": "RUN009",
+    "title": "Boolean env parsing regression",
+    "body": "Feature flag parser treats any non-empty string, including false, as enabled.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN009-base",
+    "head_sha": "RUN009-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN009"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN009: Multi-agent review completed for src/config/flags.py. Bug Reviewer: bug deterministic evaluation pass produced 1 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-19c8cabfecbc",
+      "file_path": "src/config/flags.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "bug",
+      "severity": "major",
+      "confidence": 0.86,
+      "title": "String false is parsed as enabled",
+      "description": "String false is parsed as enabled",
+      "evidence": "+    return bool(value)",
+      "suggestion": "Parse boolean strings explicitly instead of relying on truthiness.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> String false is parsed as enabled",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Parse boolean strings explicitly instead of relying on truthiness.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_flags.py",
+          "test_name": "test_false_string_disables_flag",
+          "scenario": "Regression coverage for: String false is parsed as enabled",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "bug"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5528055000177119,
+    "llm_latency_seconds": 0.00018329996964894235,
+    "total_tokens": 4455,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "377ee248-73b7-4679-806b-6d07afd824fa"
+}

@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN015",
+    "pull_number": null,
+    "identifier": "RUN015",
+    "title": "Timezone naive date comparison",
+    "body": "Billing code compares timezone-aware timestamps to datetime.utcnow output.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN015-base",
+    "head_sha": "RUN015-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN015"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN015: Multi-agent review completed for src/billing/cycle.py. Bug Reviewer: bug deterministic evaluation pass produced 1 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-5be81e79d14d",
+      "file_path": "src/billing/cycle.py",
+      "line_start": 1,
+      "line_end": 1,
+      "category": "bug",
+      "severity": "major",
+      "confidence": 0.86,
+      "title": "Naive UTC timestamp can break comparisons",
+      "description": "Naive UTC timestamp can break comparisons",
+      "evidence": "+def expired(deadline):",
+      "suggestion": "Use timezone-aware UTC timestamps.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Naive UTC timestamp can break comparisons",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Use timezone-aware UTC timestamps.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_cycle.py",
+          "test_name": "test_timezone_aware_cycle_comparison",
+          "scenario": "Regression coverage for: Naive UTC timestamp can break comparisons",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "bug"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5756112999806646,
+    "llm_latency_seconds": 0.0001855999871622771,
+    "total_tokens": 4490,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "3117d1a6-f936-427e-9d97-41077bd88a57"
+}

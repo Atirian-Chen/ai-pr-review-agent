@@ -32,12 +32,33 @@ class MarkdownRenderer:
                     [
                         f"### {index}. [{finding.severity.title()}][{finding.category}] {finding.title}",
                         f"- File: `{location}`",
+                        f"- Reviewer: `{finding.reviewer}`",
                         f"- Confidence: {finding.confidence:.2f}",
                         f"- Evidence: {finding.evidence}",
                         f"- Why it matters: {finding.description}",
                         f"- Suggestion: {finding.suggestion}",
                     ]
                 )
+                if finding.patch_suggestion:
+                    lines.extend(
+                        [
+                            "",
+                            "**Patch Suggestion**",
+                            f"- Plan: {finding.patch_suggestion.description}",
+                        ]
+                    )
+                    if finding.patch_suggestion.commands:
+                        lines.extend([f"- Validate: `{command}`" for command in finding.patch_suggestion.commands])
+                    if finding.patch_suggestion.suggested_patch:
+                        lines.extend(["", "```diff", finding.patch_suggestion.suggested_patch.rstrip(), "```"])
+                if finding.test_suggestions:
+                    lines.extend(["", "**Test Suggestions**"])
+                    for test_suggestion in finding.test_suggestions:
+                        target = f" in `{test_suggestion.test_file_path}`" if test_suggestion.test_file_path else ""
+                        lines.append(f"- `{test_suggestion.test_name}`{target}: {test_suggestion.scenario}")
+                        lines.extend([f"  - Assert: {assertion}" for assertion in test_suggestion.assertions])
+                        if test_suggestion.suggested_test_code:
+                            lines.extend(["", "```python", test_suggestion.suggested_test_code.rstrip(), "```"])
                 if finding.suggested_patch:
                     lines.extend(["", "```suggestion", finding.suggested_patch.rstrip(), "```"])
                 lines.append("")
@@ -45,7 +66,13 @@ class MarkdownRenderer:
         test_findings = [finding for finding in result.findings if finding.category == "test"]
         lines.extend(["## Test Suggestions"])
         if test_findings:
-            lines.extend([f"- {finding.suggestion}" for finding in test_findings])
+            for finding in test_findings:
+                if finding.test_suggestions:
+                    for test_suggestion in finding.test_suggestions:
+                        target = f" in `{test_suggestion.test_file_path}`" if test_suggestion.test_file_path else ""
+                        lines.append(f"- `{test_suggestion.test_name}`{target}: {test_suggestion.scenario}")
+                else:
+                    lines.append(f"- {finding.suggestion}")
         else:
             lines.append("No specific test gaps were identified.")
 

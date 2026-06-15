@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN019",
+    "pull_number": null,
+    "identifier": "RUN019",
+    "title": "Invalid JSON parse fallback",
+    "body": "JSON parse errors now return an empty object, causing invalid payloads to be accepted.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN019-base",
+    "head_sha": "RUN019-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN019"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN019: Multi-agent review completed for src/api/json_body.py. Bug Reviewer: bug deterministic evaluation pass produced 1 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-a5fadabd3cb7",
+      "file_path": "src/api/json_body.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "bug",
+      "severity": "major",
+      "confidence": 0.86,
+      "title": "Invalid JSON payloads are silently accepted",
+      "description": "Invalid JSON payloads are silently accepted",
+      "evidence": "+    try:",
+      "suggestion": "Raise a bad-request error instead of returning an empty object.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Invalid JSON payloads are silently accepted",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Raise a bad-request error instead of returning an empty object.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_json_body.py",
+          "test_name": "test_invalid_json_is_rejected",
+          "scenario": "Regression coverage for: Invalid JSON payloads are silently accepted",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "bug"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5588862999866251,
+    "llm_latency_seconds": 0.00018279999494552612,
+    "total_tokens": 4614,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "efa155a9-23b4-4f87-a46f-79d7297b51a7"
+}

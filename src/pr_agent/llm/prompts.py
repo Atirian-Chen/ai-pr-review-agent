@@ -21,6 +21,7 @@ Review conservatively:
 - Do not report a possible None/null AttributeError when the shown schema/model definition makes the field required or gives it a non-null default.
 - Do not report an incorrect CLI command unless the provided code or docs contradict the command name.
 - For each finding, explain the concrete failure path and why the current diff introduces it.
+- For missing-test findings, anchor file_path and line_start to the changed source line that needs coverage; put the target test file in test_suggestions.
 - If no clear issue is found, return {"summary": "...", "findings": []}.
 
 Return JSON only with this shape:
@@ -43,6 +44,20 @@ Return JSON only with this shape:
       "why_introduced_by_diff": "which changed line or removed guard makes this possible",
       "false_positive_checks": [
         "related tests/context/schema/CLI definitions checked before reporting"
+      ],
+      "patch_suggestion": {
+        "description": "executable fix plan",
+        "suggested_patch": "optional unified or focused patch snippet",
+        "commands": ["optional command to validate the fix"]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_example.py",
+          "test_name": "test_changed_behavior",
+          "scenario": "behavior that should be covered",
+          "assertions": ["expected assertion"],
+          "suggested_test_code": "optional test code snippet"
+        }
       ]
     }
   ]
@@ -76,4 +91,24 @@ def build_general_review_user_prompt(context: ReviewContext) -> str:
         "Before reporting, actively look for context that disproves the issue. "
         "If the issue depends on an assumption not proven by the diff or context, do not report it.\n\n"
         + json.dumps(payload, ensure_ascii=False, indent=2)
+    )
+
+
+def build_specialized_review_system_prompt(role_name: str, focus: str, allowed_categories: list[str]) -> str:
+    categories = "|".join(allowed_categories)
+    return (
+        GENERAL_REVIEW_SYSTEM_PROMPT
+        + "\n\n"
+        + f"You are the {role_name}. Focus only on: {focus}.\n"
+        + f"Only emit findings whose category is one of: {categories}.\n"
+        + "If the file has no issue in your focus area, return an empty findings array.\n"
+        + "For every kept finding, include patch_suggestion and/or test_suggestions when a concrete action is possible."
+    )
+
+
+def build_specialized_review_user_prompt(context: ReviewContext, role_name: str, focus: str) -> str:
+    return (
+        f"Run the {role_name} pass for this file. Focus: {focus}. "
+        "Do not duplicate issues outside your role.\n\n"
+        + build_general_review_user_prompt(context)
     )

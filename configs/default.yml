@@ -3,6 +3,12 @@ review:
   max_findings: 8
   confidence_threshold: 0.6
   temperature: 0.1
+  reviewer_mode: "multi_agent"
+  enabled_reviewers:
+    - "bug"
+    - "test"
+    - "security"
+    - "performance"
 
 filters:
   skip_paths:

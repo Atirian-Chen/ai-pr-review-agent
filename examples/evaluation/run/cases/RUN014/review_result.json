@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN014",
+    "pull_number": null,
+    "identifier": "RUN014",
+    "title": "Large response materialized twice",
+    "body": "Export endpoint builds a full list and then copies it again before streaming.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN014-base",
+    "head_sha": "RUN014-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN014"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN014: Multi-agent review completed for src/export/service.py. Bug Reviewer: bug deterministic evaluation pass produced 0 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 1 finding(s).",
+  "findings": [
+    {
+      "id": "finding-13d92372d518",
+      "file_path": "src/export/service.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "performance",
+      "severity": "major",
+      "confidence": 0.86,
+      "title": "Large export result is materialized twice",
+      "description": "Large export result is materialized twice",
+      "evidence": "+    rows = list(queryset)",
+      "suggestion": "Stream rows or avoid copying the full list.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Large export result is materialized twice",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Stream rows or avoid copying the full list.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_service.py",
+          "test_name": "test_export_does_not_copy_all_rows",
+          "scenario": "Regression coverage for: Large export result is materialized twice",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "performance"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5564263999985997,
+    "llm_latency_seconds": 0.00017059998936019838,
+    "total_tokens": 4592,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "c15000a2-53a2-4ee5-8009-d0b482c1517a"
+}

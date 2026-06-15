@@ -1,0 +1,59 @@
+{
+  "total_pr_cases": 20,
+  "total_expected_findings": 20,
+  "category_counts": {
+    "bug": 5,
+    "performance": 5,
+    "security": 5,
+    "test": 5
+  },
+  "difficulty_counts": {
+    "easy": 6,
+    "hard": 4,
+    "medium": 10
+  },
+  "label_counts": {
+    "algorithm": 1,
+    "api": 2,
+    "auth": 2,
+    "backend": 1,
+    "bug": 5,
+    "config": 1,
+    "datetime": 1,
+    "deserialization": 1,
+    "false-positive-control": 1,
+    "github-actions": 1,
+    "http": 1,
+    "memory": 1,
+    "negative": 1,
+    "pagination": 2,
+    "parser": 2,
+    "performance": 5,
+    "secret": 1,
+    "security": 5,
+    "sql": 1,
+    "ssrf": 1,
+    "test": 5
+  },
+  "metrics": {
+    "predictions_scored": 20,
+    "unknown_case_ids": [],
+    "valid_finding_rate": 0.9090909090909091,
+    "line_hit_rate": 1.0,
+    "false_positive_rate": 0.09090909090909091,
+    "fixability_rate": 1.0,
+    "valid_findings": 20,
+    "false_positive_findings": 2,
+    "predicted_findings": 22,
+    "latency": {
+      "average_seconds": 0.5760405049994006,
+      "p95_seconds": 0.5842593999987002,
+      "total_seconds": 11.520810099988012
+    },
+    "token_cost": {
+      "average_tokens": 4644.85,
+      "total_tokens": 92897,
+      "total_cost_usd": 0.0
+    }
+  }
+}

@@ -13,6 +13,34 @@ Category = Literal["bug", "security", "performance", "maintainability", "test", 
 Severity = Literal["critical", "major", "minor", "nit"]
 
 
+class PatchSuggestion(BaseModel):
+    description: str
+    suggested_patch: str | None = None
+    commands: list[str] = Field(default_factory=list)
+
+    @field_validator("description")
+    @classmethod
+    def _description_not_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("field must not be blank")
+        return value.strip()
+
+
+class TestSuggestion(BaseModel):
+    test_file_path: str | None = None
+    test_name: str
+    scenario: str
+    assertions: list[str] = Field(default_factory=list)
+    suggested_test_code: str | None = None
+
+    @field_validator("test_name", "scenario")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("field must not be blank")
+        return value.strip()
+
+
 class ReviewFinding(BaseModel):
     id: str
     file_path: str
@@ -29,6 +57,8 @@ class ReviewFinding(BaseModel):
     failure_mode: str | None = None
     why_introduced_by_diff: str | None = None
     false_positive_checks: list[str] = Field(default_factory=list)
+    patch_suggestion: PatchSuggestion | None = None
+    test_suggestions: list[TestSuggestion] = Field(default_factory=list)
     reviewer: str
 
     @field_validator("title", "description", "evidence", "suggestion")

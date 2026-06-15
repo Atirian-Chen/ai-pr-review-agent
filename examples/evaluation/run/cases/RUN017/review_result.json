@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN017",
+    "pull_number": null,
+    "identifier": "RUN017",
+    "title": "SSRF through webhook callback URL",
+    "body": "Webhook callback fetches a user-provided URL without scheme or host validation.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN017-base",
+    "head_sha": "RUN017-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN017"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN017: Multi-agent review completed for src/webhook/callback.py. Bug Reviewer: bug deterministic evaluation pass produced 0 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 1 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-e2609395b1b3",
+      "file_path": "src/webhook/callback.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "security",
+      "severity": "critical",
+      "confidence": 0.86,
+      "title": "User provided callback URL can trigger SSRF",
+      "description": "User provided callback URL can trigger SSRF",
+      "evidence": "+    url = callback.url",
+      "suggestion": "Validate scheme and host before fetching callback URLs.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> User provided callback URL can trigger SSRF",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Validate scheme and host before fetching callback URLs.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_callback.py",
+          "test_name": "test_rejects_private_callback_host",
+          "scenario": "Regression coverage for: User provided callback URL can trigger SSRF",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "security"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5756130999943707,
+    "llm_latency_seconds": 0.00016599998343735933,
+    "total_tokens": 4554,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "94aeed19-c635-49db-97cd-9aadcdf23d59"
+}

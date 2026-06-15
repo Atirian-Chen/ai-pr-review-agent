@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN007",
+    "pull_number": null,
+    "identifier": "RUN007",
+    "title": "Regex compiled inside hot loop",
+    "body": "Import parser compiles the same pattern for every line of a large file.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN007-base",
+    "head_sha": "RUN007-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN007"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN007: Multi-agent review completed for src/importer/parser.py. Bug Reviewer: bug deterministic evaluation pass produced 0 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 1 finding(s).",
+  "findings": [
+    {
+      "id": "finding-5d3f3a2260fc",
+      "file_path": "src/importer/parser.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "performance",
+      "severity": "minor",
+      "confidence": 0.86,
+      "title": "Regex is compiled inside a hot loop",
+      "description": "Regex is compiled inside a hot loop",
+      "evidence": "+    matches = []",
+      "suggestion": "Move regex compilation outside the loop.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Regex is compiled inside a hot loop",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Move regex compilation outside the loop.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_parser.py",
+          "test_name": "test_parser_reuses_compiled_regex",
+          "scenario": "Regression coverage for: Regex is compiled inside a hot loop",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "performance"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5556703000038397,
+    "llm_latency_seconds": 0.00016939998022280633,
+    "total_tokens": 4766,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "3475538c-35aa-42a8-953f-f485191c5fcc"
+}
