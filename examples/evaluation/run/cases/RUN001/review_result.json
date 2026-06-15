@@ -1,0 +1,125 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN001",
+    "pull_number": null,
+    "identifier": "RUN001",
+    "title": "Null user branch in profile endpoint",
+    "body": "A profile endpoint returns user.display_name after adding an unauthenticated branch.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN001-base",
+    "head_sha": "RUN001-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN001"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN001: Multi-agent review completed for src/api/profile.py. Bug Reviewer: bug deterministic evaluation pass produced 1 finding(s). Test Reviewer: test deterministic evaluation pass produced 1 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-8c4732fd4f83",
+      "file_path": "src/api/profile.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "bug",
+      "severity": "major",
+      "confidence": 0.86,
+      "title": "User can be None before display_name access",
+      "description": "User can be None before display_name access",
+      "evidence": "+    if user is None:",
+      "suggestion": "Guard the unauthenticated branch before reading display_name.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> User can be None before display_name access",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Guard the unauthenticated branch before reading display_name.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_profile.py",
+          "test_name": "test_profile_requires_authenticated_user",
+          "scenario": "Regression coverage for: User can be None before display_name access",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "bug"
+    },
+    {
+      "id": "finding-d82d98cbc97d",
+      "file_path": "src/api/profile.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "test",
+      "severity": "minor",
+      "confidence": 0.86,
+      "title": "Missing unauthenticated profile regression test",
+      "description": "Missing unauthenticated profile regression test",
+      "evidence": "+    if user is None:",
+      "suggestion": "Add a test covering requests without an authenticated user.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Missing unauthenticated profile regression test",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Add a test covering requests without an authenticated user.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_profile.py",
+          "test_name": "test_profile_requires_authenticated_user",
+          "scenario": "Regression coverage for: Missing unauthenticated profile regression test",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "test"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.7637422000116203,
+    "llm_latency_seconds": 0.00035239997669123113,
+    "total_tokens": 4845,
+    "verification": {
+      "candidate_findings": 2,
+      "verified_findings": 2,
+      "deterministic_verified_findings": 2,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 2,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "5222ebde-4f75-4d57-abc0-8dc2fb54a6c3"
+}

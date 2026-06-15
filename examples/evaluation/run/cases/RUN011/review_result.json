@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN011",
+    "pull_number": null,
+    "identifier": "RUN011",
+    "title": "Unsafe YAML load",
+    "body": "Configuration loader switches from safe_load to load without specifying a safe loader.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN011-base",
+    "head_sha": "RUN011-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN011"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN011: Multi-agent review completed for src/config/yaml_loader.py. Bug Reviewer: bug deterministic evaluation pass produced 0 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 1 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-609f5621f757",
+      "file_path": "src/config/yaml_loader.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "security",
+      "severity": "critical",
+      "confidence": 0.86,
+      "title": "Unsafe YAML load can construct objects",
+      "description": "Unsafe YAML load can construct objects",
+      "evidence": "+    return yaml.load(text)",
+      "suggestion": "Use yaml.safe_load for untrusted configuration.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Unsafe YAML load can construct objects",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Use yaml.safe_load for untrusted configuration.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_yaml_loader.py",
+          "test_name": "test_yaml_uses_safe_loader",
+          "scenario": "Regression coverage for: Unsafe YAML load can construct objects",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "security"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5599739000026602,
+    "llm_latency_seconds": 0.00017359998309984803,
+    "total_tokens": 4473,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "876cec29-f3c1-46cb-a6cc-2bdf175fbe6e"
+}

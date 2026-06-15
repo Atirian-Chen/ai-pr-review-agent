@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN016",
+    "pull_number": null,
+    "identifier": "RUN016",
+    "title": "Retry exhaustion test gap",
+    "body": "HTTP client retry loop adds max attempts but tests only cover first retry success.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN016-base",
+    "head_sha": "RUN016-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN016"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN016: Multi-agent review completed for src/http/retry.py. Bug Reviewer: bug deterministic evaluation pass produced 0 finding(s). Test Reviewer: test deterministic evaluation pass produced 1 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-fa552fd6c8c3",
+      "file_path": "src/http/retry.py",
+      "line_start": 1,
+      "line_end": 1,
+      "category": "test",
+      "severity": "minor",
+      "confidence": 0.86,
+      "title": "Missing retry exhaustion test case",
+      "description": "Missing retry exhaustion test case",
+      "evidence": "+def request(client, max_attempts=3):",
+      "suggestion": "Add a test that exhausts retries and returns the final error.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Missing retry exhaustion test case",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Add a test that exhausts retries and returns the final error.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_retry.py",
+          "test_name": "test_retry_exhaustion_returns_error",
+          "scenario": "Regression coverage for: Missing retry exhaustion test case",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "test"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5786959000106435,
+    "llm_latency_seconds": 0.0005030999891459942,
+    "total_tokens": 4819,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "4b6228c8-42dd-4343-9419-033aeaaeb788"
+}

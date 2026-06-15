@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN004",
+    "pull_number": null,
+    "identifier": "RUN004",
+    "title": "Missing branch deletion push test",
+    "body": "GitHub Actions event resolver handles all-zero push SHAs but tests only cover normal push.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN004-base",
+    "head_sha": "RUN004-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN004"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN004: Multi-agent review completed for src/pr_agent/github/actions.py. Bug Reviewer: bug deterministic evaluation pass produced 0 finding(s). Test Reviewer: test deterministic evaluation pass produced 1 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-3825e5fa6703",
+      "file_path": "src/pr_agent/github/actions.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "test",
+      "severity": "minor",
+      "confidence": 0.86,
+      "title": "Missing branch deletion event regression test",
+      "description": "Missing branch deletion event regression test",
+      "evidence": "+    if after == \"0\" * 40:",
+      "suggestion": "Add a push event test with an all-zero after SHA.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Missing branch deletion event regression test",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Add a push event test with an all-zero after SHA.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_actions.py",
+          "test_name": "test_skips_branch_deletion_push",
+          "scenario": "Regression coverage for: Missing branch deletion event regression test",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "test"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5664015000220388,
+    "llm_latency_seconds": 0.0001776999852154404,
+    "total_tokens": 4624,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "db6d5934-1ec7-4e67-9c51-8ce06f2c88e0"
+}

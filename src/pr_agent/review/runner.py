@@ -11,12 +11,13 @@ from pathlib import Path
 from typing import Any
 
 from pr_agent.agents.general_reviewer import GeneralReviewer
+from pr_agent.agents.multi_agent_reviewer import DEFAULT_REVIEWER_SPECS, MultiAgentReviewer
 from pr_agent.config import AppConfig
 from pr_agent.context.retriever import ContextRetriever
 from pr_agent.diff.filters import should_review_file
 from pr_agent.github.client import GitHubClient
 from pr_agent.github.models import ChangedFile
-from pr_agent.llm.client import OpenAICompatibleLLMClient
+from pr_agent.llm.client import LLMClient, OpenAICompatibleLLMClient
 from pr_agent.review.llm_verifier import verify_findings_with_llm
 from pr_agent.review.renderer import MarkdownRenderer
 from pr_agent.review.schema import ReviewFinding, ReviewResult
@@ -45,16 +46,28 @@ def load_change_set(
 
 
 def run_review(target: str, cfg: AppConfig, repo_root: Path | None = None) -> ReviewRun:
+    root = repo_root or Path.cwd()
+    change_set = load_change_set(target, cfg.github.api_base_url, cfg.github.timeout_seconds, root)
+    return run_review_on_change_set(change_set, cfg, repo_root=root)
+
+
+def run_review_on_change_set(
+    change_set: ChangeSet,
+    cfg: AppConfig,
+    repo_root: Path | None = None,
+    llm_client: LLMClient | None = None,
+    verifier_llm_client: LLMClient | None = None,
+    verifier_skip_reason: str | None = None,
+) -> ReviewRun:
     started = time.perf_counter()
     trace_id = str(uuid.uuid4())
     root = repo_root or Path.cwd()
-    change_set = load_change_set(target, cfg.github.api_base_url, cfg.github.timeout_seconds, root)
     reviewable_files = [file for file in change_set.files if should_review_file(file, cfg)][: cfg.review.max_files]
 
     github_client = GitHubClient(api_base_url=cfg.github.api_base_url, timeout_seconds=cfg.github.timeout_seconds)
     retriever = ContextRetriever(github_client=github_client, config=cfg, repo_root=root)
-    llm_client = OpenAICompatibleLLMClient.from_env(cfg.llm)
-    reviewer = GeneralReviewer(llm_client)
+    active_llm_client = llm_client or OpenAICompatibleLLMClient.from_env(cfg.llm)
+    reviewer = _build_reviewer(active_llm_client, cfg)
 
     all_findings: list[ReviewFinding] = []
     summaries: list[str] = []
@@ -102,7 +115,8 @@ def run_review(target: str, cfg: AppConfig, repo_root: Path | None = None) -> Re
         root,
         max_findings=max(cfg.review.max_findings * 4, 32),
     )
-    verifier_llm_client, verifier_skip_reason = _build_verifier_llm_client(cfg)
+    if verifier_llm_client is None and verifier_skip_reason is None:
+        verifier_llm_client, verifier_skip_reason = _build_verifier_llm_client(cfg)
     result = verify_findings_with_llm(
         deterministic_result,
         change_set,
@@ -144,3 +158,14 @@ def _build_verifier_llm_client(cfg: AppConfig) -> tuple[OpenAICompatibleLLMClien
         return OpenAICompatibleLLMClient.from_env(cfg.verifier_llm, env_prefix="VERIFIER_OPENAI"), None
     except Exception as exc:
         return None, f"verifier LLM setup failed: {exc.__class__.__name__}: {exc}"
+
+
+def _build_reviewer(llm_client: LLMClient, cfg: AppConfig) -> GeneralReviewer | MultiAgentReviewer:
+    if cfg.review.reviewer_mode == "single":
+        return GeneralReviewer(llm_client)
+
+    enabled = set(cfg.review.enabled_reviewers)
+    specs = tuple(spec for spec in DEFAULT_REVIEWER_SPECS if spec.reviewer_id in enabled)
+    if not specs:
+        return GeneralReviewer(llm_client)
+    return MultiAgentReviewer(llm_client, reviewer_specs=specs)

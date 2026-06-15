@@ -1,6 +1,6 @@
 from pr_agent.github.models import PRInfo
 from pr_agent.review.renderer import MarkdownRenderer
-from pr_agent.review.schema import ReviewFinding, ReviewResult
+from pr_agent.review.schema import PatchSuggestion, ReviewFinding, ReviewResult, TestSuggestion as ReviewTestSuggestion
 
 
 def make_pr() -> PRInfo:
@@ -80,3 +80,48 @@ def test_renderer_includes_verification_metrics():
     assert "Candidate findings: 3" in report
     assert "Suppressed candidates: 2" in report
     assert "Published findings: 1" in report
+
+
+def test_renderer_includes_patch_and_test_suggestions():
+    result = ReviewResult(
+        pr=make_pr(),
+        summary="Found one issue.",
+        findings=[
+            ReviewFinding(
+                id="f1",
+                file_path="src/app.py",
+                line_start=10,
+                line_end=10,
+                category="bug",
+                severity="major",
+                confidence=0.9,
+                title="None branch can fail",
+                description="The new branch returns None.",
+                evidence="+ return None",
+                suggestion="Return a value or raise.",
+                suggested_patch=None,
+                patch_suggestion=PatchSuggestion(
+                    description="Replace the None return.",
+                    suggested_patch="- return None\n+ raise ValueError()",
+                    commands=["python -m pytest"],
+                ),
+                test_suggestions=[
+                    ReviewTestSuggestion(
+                        test_file_path="tests/test_app.py",
+                        test_name="test_none_branch",
+                        scenario="Input triggers the None branch.",
+                        assertions=["The branch raises a controlled error."],
+                    )
+                ],
+                reviewer="bug",
+            )
+        ],
+        stats={},
+        model_info={"model": "test-model"},
+    )
+
+    report = MarkdownRenderer().render(result)
+
+    assert "Patch Suggestion" in report
+    assert "python -m pytest" in report
+    assert "test_none_branch" in report

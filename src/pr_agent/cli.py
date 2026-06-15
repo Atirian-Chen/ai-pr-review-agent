@@ -10,7 +10,16 @@ from typing import Any
 import typer
 
 from pr_agent.config import load_config
-from pr_agent.evaluation.dataset import build_evaluation_report, load_evaluation_cases, load_predictions, report_to_json
+from pr_agent.evaluation.dataset import (
+    build_evaluation_report,
+    build_pr_evaluation_report,
+    load_evaluation_cases,
+    load_pr_evaluation_cases,
+    load_pr_predictions,
+    load_predictions,
+    report_to_json,
+)
+from pr_agent.evaluation.runner import run_pr_evaluation
 from pr_agent.github.actions import GitHubActionSkip, resolve_action_review_target
 from pr_agent.github.client import GitHubClient
 from pr_agent.github.comments import SUMMARY_COMMENT_MARKER, build_summary_comment
@@ -120,6 +129,49 @@ def eval_dataset(
         out.write_text(report_json + "\n", encoding="utf-8")
 
     typer.echo(report_json)
+
+
+@app.command("eval-report")
+def eval_report(
+    cases: Path = typer.Option(Path("evaluation/pr_cases.jsonl"), "--cases", help="PR evaluation JSONL cases"),
+    predictions: Path | None = typer.Option(None, "--predictions", help="Optional PR prediction JSONL file"),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Optional path for evaluation_report.json"),
+    line_tolerance: int = typer.Option(3, "--line-tolerance", help="Allowed line distance for line_hit_rate"),
+) -> None:
+    """Build a PR-level evaluation report with validity, false-positive, fixability, latency, and token metrics."""
+    pr_cases = load_pr_evaluation_cases(cases)
+    prediction_rows = load_pr_predictions(predictions) if predictions else None
+    report = build_pr_evaluation_report(pr_cases, prediction_rows, line_tolerance=line_tolerance)
+    report_json = report_to_json(report)
+
+    if out:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(report_json + "\n", encoding="utf-8")
+
+    typer.echo(report_json)
+
+
+@app.command("eval-run")
+def eval_run(
+    cases: Path = typer.Option(Path("evaluation/runnable_pr_cases.jsonl"), "--cases", help="Runnable PR evaluation JSONL cases"),
+    out: Path = typer.Option(Path("examples/evaluation/run"), "--out", "-o", help="Output directory for predictions and reports"),
+    config: Path | None = typer.Option(None, "--config", help="Config YAML path"),
+    llm_mode: str = typer.Option("deterministic", "--llm-mode", help="deterministic or live"),
+    line_tolerance: int = typer.Option(3, "--line-tolerance", help="Allowed line distance for line_hit_rate"),
+) -> None:
+    """Run reviewer over executable PR cases, write predictions, and build the evaluation report."""
+    load_dotenv_file()
+    cfg = load_config(config)
+    if llm_mode not in {"deterministic", "live"}:
+        raise typer.BadParameter("--llm-mode must be deterministic or live")
+    result = run_pr_evaluation(
+        cases_path=cases,
+        out=out,
+        cfg=cfg,
+        llm_mode=llm_mode,  # type: ignore[arg-type]
+        line_tolerance=line_tolerance,
+    )
+    typer.echo(report_to_json(result.report))
 
 
 def _write_json(path: Path, payload: Any) -> None:

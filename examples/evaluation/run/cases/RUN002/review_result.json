@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN002",
+    "pull_number": null,
+    "identifier": "RUN002",
+    "title": "SQL string interpolation in search",
+    "body": "Search query is built with an f-string from request parameters.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN002-base",
+    "head_sha": "RUN002-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN002"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN002: Multi-agent review completed for src/search/repository.py. Bug Reviewer: bug deterministic evaluation pass produced 0 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 1 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-2dc6b1e0ccf2",
+      "file_path": "src/search/repository.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "security",
+      "severity": "critical",
+      "confidence": 0.86,
+      "title": "User input is interpolated into SQL",
+      "description": "User input is interpolated into SQL",
+      "evidence": "+    sql = f\"SELECT * FROM docs WHERE title LIKE '%{term}%'\"",
+      "suggestion": "Use parameterized queries for user-controlled search terms.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> User input is interpolated into SQL",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Use parameterized queries for user-controlled search terms.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_repository.py",
+          "test_name": "test_search_uses_parameters",
+          "scenario": "Regression coverage for: User input is interpolated into SQL",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "security"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5609514999960084,
+    "llm_latency_seconds": 0.00018689999706111848,
+    "total_tokens": 4639,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "58a562d1-81b5-4445-a062-494023cda50d"
+}

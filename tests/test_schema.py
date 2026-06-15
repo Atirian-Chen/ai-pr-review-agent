@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 from pr_agent.diff.models import DiffHunk, DiffLine
 from pr_agent.github.models import PRInfo
-from pr_agent.review.schema import ReviewFinding, ReviewResult
+from pr_agent.review.schema import PatchSuggestion, ReviewFinding, ReviewResult, TestSuggestion as ReviewTestSuggestion
 from pr_agent.review.validator import validate_findings
 
 
@@ -79,3 +79,24 @@ def test_validate_findings_filters_low_confidence_and_bad_lines():
     validated = validate_findings(result, [hunk], confidence_threshold=0.6, max_findings=8)
 
     assert [finding.id for finding in validated.findings] == ["good"]
+
+
+def test_review_finding_accepts_patch_and_test_suggestions():
+    finding = make_finding(
+        patch_suggestion=PatchSuggestion(
+            description="Guard the None branch.",
+            suggested_patch="- return user.name\n+ return user.name if user else None",
+            commands=["python -m pytest tests/test_app.py"],
+        ),
+        test_suggestions=[
+            ReviewTestSuggestion(
+                test_file_path="tests/test_app.py",
+                test_name="test_missing_user",
+                scenario="The endpoint receives a request without a user.",
+                assertions=["The response is a 401 instead of a 500."],
+            )
+        ],
+    )
+
+    assert finding.patch_suggestion is not None
+    assert finding.test_suggestions[0].test_name == "test_missing_user"

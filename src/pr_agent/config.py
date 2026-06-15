@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,8 @@ class ReviewSettings(BaseModel):
     max_findings: int = 8
     confidence_threshold: float = 0.6
     temperature: float = 0.1
+    reviewer_mode: Literal["single", "multi_agent"] = "multi_agent"
+    enabled_reviewers: list[str] = Field(default_factory=lambda: ["bug", "test", "security", "performance"])
 
 
 class FilterSettings(BaseModel):

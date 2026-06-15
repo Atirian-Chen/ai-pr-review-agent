@@ -44,7 +44,7 @@ jobs:
           OPENAI_TIMEOUT_SECONDS: "500"
           VERIFIER_OPENAI_API_KEY: ${{ secrets.VERIFIER_OPENAI_API_KEY }}
           VERIFIER_OPENAI_BASE_URL: https://api.deepseek.com
-          VERIFIER_OPENAI_MODEL: deepseek-chat
+          VERIFIER_OPENAI_MODEL: deepseek-v4-flash
           VERIFIER_OPENAI_TIMEOUT_SECONDS: "120"
         run: pr-agent review-action --out outputs/github-action
 

@@ -1,0 +1,87 @@
+{
+  "pr": {
+    "source_type": "local_diff",
+    "owner": "evaluation",
+    "repo": "RUN006",
+    "pull_number": null,
+    "identifier": "RUN006",
+    "title": "Pagination cursor ignored",
+    "body": "A new list endpoint accepts cursor but always starts from the first page.",
+    "base_branch": "base",
+    "head_branch": "head",
+    "base_sha": "RUN006-base",
+    "head_sha": "RUN006-head",
+    "author": "evaluation",
+    "url": "evaluation://RUN006"
+  },
+  "summary": "Reviewed 1 file(s) in local_diff target RUN006: Multi-agent review completed for src/api/items.py. Bug Reviewer: bug deterministic evaluation pass produced 1 finding(s). Test Reviewer: test deterministic evaluation pass produced 0 finding(s). Security Reviewer: security deterministic evaluation pass produced 0 finding(s). Performance Reviewer: performance deterministic evaluation pass produced 0 finding(s).",
+  "findings": [
+    {
+      "id": "finding-5404376d6b1c",
+      "file_path": "src/api/items.py",
+      "line_start": 2,
+      "line_end": 2,
+      "category": "bug",
+      "severity": "major",
+      "confidence": 0.86,
+      "title": "Cursor parameter is ignored",
+      "description": "Cursor parameter is ignored",
+      "evidence": "+    cursor = None",
+      "suggestion": "Use the supplied cursor when selecting the page window.",
+      "suggested_patch": null,
+      "failure_mode": "changed input path -> Cursor parameter is ignored",
+      "why_introduced_by_diff": "The issue is visible in the added lines of this patch.",
+      "false_positive_checks": [
+        "Matched a deterministic evaluation pattern in the changed diff."
+      ],
+      "patch_suggestion": {
+        "description": "Use the supplied cursor when selecting the page window.",
+        "suggested_patch": null,
+        "commands": [
+          "python -m pytest"
+        ]
+      },
+      "test_suggestions": [
+        {
+          "test_file_path": "tests/test_items.py",
+          "test_name": "test_next_page_uses_cursor",
+          "scenario": "Regression coverage for: Cursor parameter is ignored",
+          "assertions": [
+            "The changed behavior fails before the fix and passes after it."
+          ],
+          "suggested_test_code": null
+        }
+      ],
+      "reviewer": "bug"
+    }
+  ],
+  "stats": {
+    "target_type": "local_diff",
+    "files_seen": 1,
+    "files_reviewed": 1,
+    "latency_seconds": 0.5602237000130117,
+    "llm_latency_seconds": 0.0001861000491771847,
+    "total_tokens": 4546,
+    "verification": {
+      "candidate_findings": 1,
+      "verified_findings": 1,
+      "deterministic_verified_findings": 1,
+      "deterministic_suppressed_findings": 0,
+      "published_findings": 1,
+      "suppressed_findings": 0,
+      "suppressions": [],
+      "llm_reviewed_findings": 0,
+      "llm_suppressed_findings": 0,
+      "llm_downgraded_findings": 0
+    },
+    "llm_verifier": {
+      "status": "skipped",
+      "reason": "eval-run deterministic mode"
+    }
+  },
+  "model_info": {
+    "provider": "openai_compatible",
+    "model": "deterministic-eval-reviewer"
+  },
+  "trace_id": "f63b81d7-eb57-42b2-9a00-081226fc83a3"
+}

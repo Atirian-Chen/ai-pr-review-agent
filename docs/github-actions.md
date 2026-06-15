@@ -32,7 +32,7 @@ LLM verifier:
 
 ```yaml
 VERIFIER_OPENAI_BASE_URL: https://api.deepseek.com
-VERIFIER_OPENAI_MODEL: deepseek-chat
+VERIFIER_OPENAI_MODEL: deepseek-v4-flash
 VERIFIER_OPENAI_TIMEOUT_SECONDS: "120"
 ```
 

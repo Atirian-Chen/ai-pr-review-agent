@@ -32,11 +32,24 @@ Version1 的新增代码主要落在这些模块：
 - `src/pr_agent/evaluation/dataset.py`: 加载、统计和评分评测 JSONL。
 - `examples/` 与 `evaluation/`: 提供可展示的审查结果与评测数据。
 
+## Version2 Update
+
+`version2` turns the reviewer from a single broad pass into a coordinated review system:
+
+- **Multi-Agent Reviewer**: Bug Reviewer, Test Reviewer, Security Reviewer, and Performance Reviewer run specialized passes. A deterministic Coordinator deduplicates and ranks findings.
+- **Patch Suggestion / Test Suggestion**: Findings can include structured fix plans, optional patch snippets, validation commands, test scenarios, assertions, and optional test code.
+- **Evaluation Report**: `pr-agent eval-report` scores 20-30 PR-level cases with `valid_finding_rate`, `line_hit_rate`, `false_positive_rate`, `fixability_rate`, latency, token usage, and optional cost.
+- **Design reports**: See `docs/version2-design.md` and the agent harness note in `docs/agent-harness-design.md`.
+
 ## 1. What It Does / 项目功能
 
 AI PR Review Agent is a local-first code review agent for GitHub Pull Requests, GitHub commits, GitHub compare ranges, and local git diffs. It focuses on repository-aware context, structured LLM output, conservative review, result validation, reproducible reports, and evaluation.
 
 AI PR Review Agent 是一个本地优先的 AI 代码审查 Agent，支持 GitHub PR、GitHub commit、GitHub compare range 和本地 git diff。它不是简单把 diff 丢给大模型，而是围绕 diff 解析、上下文构建、结构化输出、保守审查策略、结果校验、报告生成和评测数据做成的工程化 Agent。
+
+At the system level, it can also be viewed as a read-only agent harness for code review: the harness controls the review target, context, reviewer orchestration, validation, tracing, reporting, and evaluation around the LLM reviewer.
+
+从系统层看，它也可以理解为一个面向代码审查的只读 Agent Harness：由 harness 管理审查目标、上下文、reviewer 编排、结果校验、trace、报告和评测，而不是让模型直接自由操作仓库。
 
 Given one review target, the same command can automatically detect the target type:
 
@@ -83,13 +96,14 @@ Most toy AI code review demos stop at "send the diff to an LLM and ask for comme
 - **Unified diff parser / Diff 解析**: Converts patch text into hunks and lines with old/new line numbers.
 - **Full local diff parser / 完整本地 diff 解析**: Splits full `git diff` output into file-level patches for local working tree review.
 - **Repository context retrieval / 仓库上下文检索**: Adds surrounding code, README snippets, and related test file candidates from GitHub or local files.
-- **Conservative reviewer / 保守审查 Agent**: Prompts the LLM to report only issues supported by diff or context.
+- **Multi-agent reviewer / 多 Agent 审查**: Runs Bug, Test, Security, and Performance reviewer passes, then coordinates duplicate findings.
 - **Structured findings / 结构化建议**: Uses `ReviewFinding` and `ReviewResult` schemas for reliable downstream processing.
+- **Patch and test suggestions / 修复与测试建议**: Emits structured fix plans, optional patch snippets, validation commands, test scenarios, assertions, and optional test code.
 - **JSON recovery / JSON 输出恢复**: Handles plain JSON, fenced JSON, JSON embedded in text, and one-shot JSON repair.
 - **Quality gates / 质量过滤**: Filters low-confidence findings, invalid file paths, weak evidence, hallucinated line numbers, deterministic false positives, LLM-verifier rejections, and low-value style nits.
 - **Markdown report / Markdown 报告**: Renders readable review reports for demos and portfolio presentation.
 - **GitHub Actions review / GitHub Actions 自动审查**: Resolves `pull_request` and `push` events, runs review, uploads artifacts, and publishes summary comments.
-- **Evaluation dataset / 评测数据集**: Provides 50 labeled JSONL cases and an `eval-dataset` command for coverage and scoring.
+- **Evaluation dataset / 评测数据集**: Provides 50 labeled JSONL cases, 25 PR-level cases, `eval-dataset`, and `eval-report` commands for coverage and scoring.
 
 ## 4. Architecture / 系统架构
 
@@ -143,6 +157,8 @@ Renderer / Publisher
 ```
 
 这个设计把“变更来源”和“审查流程”解耦。PR、commit、compare、local diff 都先变成统一的 `ChangeSet`，后面的 context retrieval、LLM review、validator、renderer 和 GitHub Actions 发布流程都可以复用同一套逻辑。
+
+For the agent harness boundary, component mapping, and data flow, see `docs/agent-harness-design.md`.
 
 ## 5. Quick Start / 快速开始
 
@@ -226,6 +242,13 @@ Run evaluation dataset validation:
 
 ```powershell
 .\.venv-win\Scripts\pr-agent.exe eval-dataset --dataset evaluation/cases.jsonl --out outputs/eval_report.json
+```
+
+Run PR-level evaluation report:
+
+```powershell
+.\.venv-win\Scripts\pr-agent.exe eval-run --cases evaluation/runnable_pr_cases.jsonl --out examples/evaluation/run --llm-mode deterministic
+.\.venv-win\Scripts\pr-agent.exe eval-report --cases evaluation/pr_cases.jsonl --predictions evaluation/pr_predictions.example.jsonl --out outputs/pr_evaluation_report.json
 ```
 
 Run tests:
@@ -363,7 +386,7 @@ OPENAI_BASE_URL: https://api.deepseek.com
 OPENAI_MODEL: deepseek-v4-pro
 OPENAI_TIMEOUT_SECONDS: "500"
 VERIFIER_OPENAI_BASE_URL: https://api.deepseek.com
-VERIFIER_OPENAI_MODEL: deepseek-chat
+VERIFIER_OPENAI_MODEL: deepseek-v4-flash
 VERIFIER_OPENAI_TIMEOUT_SECONDS: "120"
 ```
 
