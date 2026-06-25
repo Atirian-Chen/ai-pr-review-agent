@@ -58,7 +58,13 @@ Return JSON only with this shape:
           "assertions": ["expected assertion"],
           "suggested_test_code": "optional test code snippet"
         }
-      ]
+      ],
+      "verification_intent": {
+        "needs_verification": true,
+        "preferred_tools": ["repository_search", "test_discovery"],
+        "search_terms": ["function_or_error_name"],
+        "candidate_test_file": "tests/test_example.py"
+      }
     }
   ]
 }

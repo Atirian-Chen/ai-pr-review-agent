@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from pr_agent.context.models import ReviewContext
-from pr_agent.llm.client import LLMClient
+from pr_agent.llm.client import LLMClient, LLMOutputError
 from pr_agent.llm.prompts import GENERAL_REVIEW_SYSTEM_PROMPT, build_general_review_user_prompt
 from pr_agent.review.schema import ReviewFinding
 
@@ -18,10 +18,24 @@ class GeneralReviewer:
         self.llm_client = llm_client
 
     def review_context(self, context: ReviewContext) -> tuple[str, list[ReviewFinding], dict[str, Any]]:
-        response = self.llm_client.complete_json(
-            system_prompt=GENERAL_REVIEW_SYSTEM_PROMPT,
-            user_prompt=build_general_review_user_prompt(context),
-        )
+        try:
+            response = self.llm_client.complete_json(
+                system_prompt=GENERAL_REVIEW_SYSTEM_PROMPT,
+                user_prompt=build_general_review_user_prompt(context),
+            )
+        except LLMOutputError as exc:
+            return (
+                f"Reviewed {context.file.filename}, but the model returned invalid JSON.",
+                [],
+                {
+                    "latency_seconds": 0.0,
+                    "usage": {},
+                    "total_tokens": 0,
+                    "model": "",
+                    "status": "invalid_json",
+                    "error": str(exc),
+                },
+            )
         summary = str(response.data.get("summary") or f"Reviewed {context.file.filename}.")
         raw_findings = response.data.get("findings") or []
         if not isinstance(raw_findings, list):
@@ -78,6 +92,7 @@ def _normalize_finding(item: dict[str, Any], fallback_file_path: str, default_re
         "false_positive_checks": false_positive_checks,
         "patch_suggestion": patch_suggestion,
         "test_suggestions": test_suggestions,
+        "verification_intent": item.get("verification_intent"),
         "reviewer": item.get("reviewer") or default_reviewer,
     }
 

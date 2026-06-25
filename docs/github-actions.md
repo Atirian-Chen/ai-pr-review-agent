@@ -38,6 +38,23 @@ VERIFIER_OPENAI_TIMEOUT_SECONDS: "120"
 
 The primary model can be a stronger reasoning model. The verifier model is intended to be cheaper and faster, such as a mini, flash, or chat model.
 
+## v2.1 Verification Environment Variables
+
+```yaml
+PR_AGENT_VERIFY_MODE: sandbox
+PR_AGENT_VERIFY_MAX_FINDINGS: "3"
+PR_AGENT_VERIFY_TIMEOUT_SECONDS: "45"
+PR_AGENT_PUBLISH_POLICY: verified_or_high_confidence
+```
+
+`PR_AGENT_VERIFY_MODE` can be `off`, `static`, or `sandbox`.
+
+- `off`: preserves v2 behavior.
+- `static`: runs read-only repository search, file reads, test discovery, and dependency inspection.
+- `sandbox`: additionally allows allowlisted Docker checks with no network and no forwarded secrets.
+
+Fork pull requests are automatically downgraded from `sandbox` to `static` by `review-action`.
+
 ## Permissions
 
 - `contents: write`: required for commit comments on push events.
@@ -57,3 +74,5 @@ The dry run writes:
 - `trace.jsonl`
 - `github_action_target.json`
 - `summary_comment.md`
+- `verification_report.json` when v2.1 verification is enabled
+- `artifacts/verification/` when v2.1 tool artifacts are produced

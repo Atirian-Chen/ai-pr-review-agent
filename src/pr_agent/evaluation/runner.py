@@ -13,10 +13,12 @@ from typing import Any, Literal
 from pr_agent.config import AppConfig
 from pr_agent.diff.parser import parse_patch
 from pr_agent.evaluation.dataset import (
+    LiveE2ECase,
     PRCase,
     PRPredictedFinding,
     PRPredictionRecord,
     build_pr_evaluation_report,
+    load_live_e2e_cases,
     load_pr_evaluation_cases,
     report_to_json,
 )
@@ -24,6 +26,7 @@ from pr_agent.github.models import ChangedFile, ReviewTargetInfo
 from pr_agent.llm.client import LLMClient, LLMJsonResponse, parse_json_payload
 from pr_agent.review.runner import run_review_on_change_set, write_review_outputs
 from pr_agent.targets.models import ChangeSet
+from pr_agent.tools.policy import VerificationOptions, normalize_verify_mode
 
 
 LLMMode = Literal["deterministic", "live"]
@@ -33,6 +36,11 @@ LLMMode = Literal["deterministic", "live"]
 class EvalRunResult:
     predictions: list[PRPredictionRecord]
     report: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class LiveE2ERunResult:
+    manifest: dict[str, Any]
 
 
 def run_pr_evaluation(
@@ -80,6 +88,75 @@ def run_pr_evaluation(
     return EvalRunResult(predictions=predictions, report=report)
 
 
+def run_live_e2e(
+    cases_path: Path,
+    out: Path,
+    cfg: AppConfig,
+    verify_mode: str = "static",
+    verification_budget: int = 3,
+    verification_timeout: int = 45,
+) -> LiveE2ERunResult:
+    cases = load_live_e2e_cases(cases_path)
+    if not cases:
+        raise ValueError(f"No live E2E cases were found in {cases_path}")
+
+    mode = normalize_verify_mode(verify_mode)
+    out.mkdir(parents=True, exist_ok=True)
+    manifest_cases: list[dict[str, Any]] = []
+
+    with tempfile.TemporaryDirectory(prefix="pr-agent-live-e2e-") as workspace:
+        workspace_root = Path(workspace)
+        for case in cases:
+            case_started = time.perf_counter()
+            case_root = workspace_root / case.id
+            case_out = out / "cases" / case.id
+            case_out.mkdir(parents=True, exist_ok=True)
+            _write_case_expectation(case_out / "expected_case.json", case)
+            try:
+                change_set = materialize_live_e2e_case(case, case_root)
+                verification_options = VerificationOptions(
+                    mode=mode,
+                    workspace=case_root if mode != "off" else None,
+                    budget=verification_budget,
+                    timeout_seconds=verification_timeout,
+                    artifacts_dir=case_out / "artifacts" / "verification" if mode != "off" else None,
+                )
+                review_run = run_review_on_change_set(
+                    change_set,
+                    cfg,
+                    repo_root=case_root,
+                    verification_options=verification_options,
+                )
+                write_review_outputs(review_run, case_out)
+                manifest_cases.append(
+                    _live_case_manifest(case, case_out, time.perf_counter() - case_started, review_run.result)
+                )
+            except Exception as exc:
+                error_payload = {
+                    "case_id": case.id,
+                    "error": f"{exc.__class__.__name__}: {exc}",
+                    "elapsed_seconds": time.perf_counter() - case_started,
+                }
+                (case_out / "error.json").write_text(json.dumps(error_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                manifest_cases.append(_live_case_manifest(case, case_out, time.perf_counter() - case_started, None, error_payload["error"]))
+
+    manifest = {
+        "cases_path": str(cases_path),
+        "verify_mode": mode,
+        "verification_budget": verification_budget,
+        "verification_timeout": verification_timeout,
+        "case_count": len(cases),
+        "cases": manifest_cases,
+        "manual_judgement": {
+            "status": "not_scored_by_tool",
+            "instructions": "Read expected_case.json, review_report.md, review_result.json, verification_report.json, and trace.jsonl for each case. Judge correctness manually; labels are descriptive and are not used for automatic scoring.",
+        },
+    }
+    (out / "case_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_live_e2e_summary(out / "summary.md", manifest)
+    return LiveE2ERunResult(manifest=manifest)
+
+
 def materialize_pr_case(case: PRCase, repo_root: Path) -> ChangeSet:
     _reset_directory(repo_root)
     files: list[ChangedFile] = []
@@ -107,6 +184,42 @@ def materialize_pr_case(case: PRCase, repo_root: Path) -> ChangeSet:
         head_sha=f"{case.id}-head",
         author="evaluation",
         url=f"evaluation://{case.id}",
+    )
+    return ChangeSet(target=target, files=files, hunks_by_file=hunks_by_file)
+
+
+def materialize_live_e2e_case(case: LiveE2ECase, repo_root: Path) -> ChangeSet:
+    _reset_directory(repo_root)
+    files: list[ChangedFile] = []
+    hunks_by_file = {}
+
+    for context_file in case.context_files:
+        context_path = repo_root / context_file.path
+        context_path.parent.mkdir(parents=True, exist_ok=True)
+        context_path.write_text(context_file.content, encoding="utf-8")
+
+    for case_file in case.files:
+        target_path = repo_root / case_file.path
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(case_file.head, encoding="utf-8")
+        patch = _build_patch(case_file.path, case_file.base, case_file.head)
+        changed_file = _changed_file(case_file.path, patch)
+        files.append(changed_file)
+        hunks_by_file[case_file.path] = parse_patch(case_file.path, patch)
+
+    target = ReviewTargetInfo(
+        source_type="local_diff",
+        owner="live-e2e",
+        repo=case.id,
+        identifier=case.id,
+        title=case.title,
+        body=case.description,
+        base_branch="base",
+        head_branch="head",
+        base_sha=f"{case.id}-base",
+        head_sha=f"{case.id}-head",
+        author="live-e2e",
+        url=f"live-e2e://{case.id}",
     )
     return ChangeSet(target=target, files=files, hunks_by_file=hunks_by_file)
 
@@ -231,15 +344,25 @@ def _prediction_from_review(case_id: str, result, latency_seconds: float) -> PRP
             title=finding.title,
             has_patch_suggestion=finding.patch_suggestion is not None or bool(finding.suggested_patch),
             has_test_suggestion=bool(finding.test_suggestions),
+            verification_status=finding.verification.status.value if finding.verification else None,
+            publication_decision=finding.verification.publication_decision if finding.verification else None,
         )
         for finding in result.findings
     ]
+    verification = result.stats.get("verification") or {}
+    tool_cost = verification.get("tool_cost") or {}
+    sandbox_tool_calls = int(tool_cost.get("sandbox_tool_calls") or 0)
     return PRPredictionRecord(
         case_id=case_id,
         findings=findings,
         latency_seconds=latency_seconds,
+        verification_latency_seconds=verification.get("verification_latency_seconds"),
         total_tokens=int(result.stats.get("total_tokens") or 0),
         cost_usd=None,
+        static_tool_calls=tool_cost.get("static_tool_calls"),
+        sandbox_tool_calls=sandbox_tool_calls,
+        llm_verifier_calls=1 if (result.stats.get("llm_verifier") or {}).get("status") == "completed" else 0,
+        sandbox_failures=int((verification.get("sandbox_failure_rate") or 0) * sandbox_tool_calls),
     )
 
 
@@ -320,4 +443,88 @@ def _write_summary(path: Path, report: dict[str, Any], predictions_path: Path) -
         f"- total_latency_seconds: {(metrics.get('latency') or {}).get('total_seconds', 0):.2f}",
         "",
     ]
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_case_expectation(path: Path, case: LiveE2ECase) -> None:
+    path.write_text(case.model_dump_json(indent=2), encoding="utf-8")
+
+
+def _live_case_manifest(case: LiveE2ECase, case_out: Path, elapsed_seconds: float, result: Any | None, error: str | None = None) -> dict[str, Any]:
+    findings = []
+    verification = {}
+    if result is not None:
+        findings = [
+            {
+                "id": finding.id,
+                "category": finding.category,
+                "severity": finding.severity,
+                "confidence": finding.confidence,
+                "title": finding.title,
+                "file_path": finding.file_path,
+                "line_start": finding.line_start,
+                "reviewer": finding.reviewer,
+                "verification_status": finding.verification.status.value if finding.verification else None,
+                "publication_decision": finding.verification.publication_decision if finding.verification else None,
+            }
+            for finding in result.findings
+        ]
+        verification = result.stats.get("verification") or {}
+
+    return {
+        "id": case.id,
+        "title": case.title,
+        "labels": case.labels,
+        "clean_case": case.clean_case,
+        "expected_issue_count": case.expected_issue_count,
+        "expected_issues": [issue.model_dump(mode="json") for issue in case.expected_issues],
+        "known_hard_to_detect": case.known_hard_to_detect,
+        "manual_review_notes": case.manual_review_notes,
+        "elapsed_seconds": elapsed_seconds,
+        "status": "error" if error else "completed",
+        "error": error,
+        "outputs": {
+            "directory": str(case_out),
+            "expected_case": str(case_out / "expected_case.json"),
+            "review_result": str(case_out / "review_result.json"),
+            "review_report": str(case_out / "review_report.md"),
+            "verification_report": str(case_out / "verification_report.json"),
+            "trace": str(case_out / "trace.jsonl"),
+            "error": str(case_out / "error.json") if error else None,
+        },
+        "actual_findings": findings,
+        "verification_summary": verification,
+    }
+
+
+def _write_live_e2e_summary(path: Path, manifest: dict[str, Any]) -> None:
+    lines = [
+        "# Live E2E Run Summary",
+        "",
+        f"- Cases: {manifest.get('case_count', 0)}",
+        f"- Verification mode: `{manifest.get('verify_mode')}`",
+        f"- Automatic scoring: disabled",
+        "",
+        "## Manual Judgement Workflow",
+        "",
+        "For each case, compare `expected_case.json` with `review_report.md`, `review_result.json`, and `verification_report.json`.",
+        "Labels are descriptive only; the runner does not decide correctness.",
+        "",
+        "## Cases",
+        "",
+    ]
+    for case in manifest.get("cases", []):
+        status = case.get("status")
+        finding_count = len(case.get("actual_findings") or [])
+        lines.extend(
+            [
+                f"### {case.get('id')}: {case.get('title')}",
+                f"- Status: `{status}`",
+                f"- Labels: {', '.join(case.get('labels') or []) or 'none'}",
+                f"- Expected issue count: {case.get('expected_issue_count', 0)}",
+                f"- Actual published findings: {finding_count}",
+                f"- Output: `{case.get('outputs', {}).get('directory')}`",
+                "",
+            ]
+        )
     path.write_text("\n".join(lines), encoding="utf-8")

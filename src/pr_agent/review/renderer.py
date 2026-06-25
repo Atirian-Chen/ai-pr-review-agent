@@ -39,6 +39,8 @@ class MarkdownRenderer:
                         f"- Suggestion: {finding.suggestion}",
                     ]
                 )
+                if finding.verification:
+                    lines.extend(self._verification_lines(finding))
                 if finding.patch_suggestion:
                     lines.extend(
                         [
@@ -98,6 +100,11 @@ class MarkdownRenderer:
             metrics.extend(
                 [
                     f"- Candidate findings: {verification.get('candidate_findings', 0)}",
+                    f"- Verification mode: {verification.get('mode', 'deterministic')}",
+                    f"- Verification coverage: {verification.get('verification_coverage', 0):.2%}",
+                    f"- Supported finding rate: {verification.get('supported_finding_rate', 0):.2%}",
+                    f"- Contradicted suppression rate: {verification.get('contradicted_suppression_rate', 0):.2%}",
+                    f"- Inconclusive rate: {verification.get('inconclusive_rate', 0):.2%}",
                     f"- Suppressed candidates: {verification.get('suppressed_findings', 0)}",
                     f"- Published findings: {verification.get('published_findings', len(result.findings))}",
                 ]
@@ -105,6 +112,32 @@ class MarkdownRenderer:
         metrics.append("")
         lines.extend(metrics)
         return "\n".join(lines)
+
+    def _verification_lines(self, finding) -> list[str]:
+        verification = finding.verification
+        status_label = {
+            "supported": "Supported",
+            "contradicted": "Contradicted",
+            "inconclusive": "Inconclusive",
+            "skipped": "Skipped",
+            "not_eligible": "Not eligible",
+            "not_requested": "Not requested",
+            "error": "Error",
+        }.get(verification.status.value, verification.status.value)
+        lines = [
+            f"- Reviewer confidence: {verification.confidence_before:.2f} -> {verification.confidence_after:.2f}",
+            f"- Verification: {status_label}",
+            f"- Publication decision: `{verification.publication_decision}`",
+            f"- Evidence summary: {verification.evidence_summary}",
+        ]
+        if verification.tool_results:
+            lines.append("- Tool evidence:")
+            for result in verification.tool_results:
+                command_hint = ""
+                if result.tool.value in {"pytest", "ruff", "mypy"} and result.matched_paths:
+                    command_hint = f" on `{', '.join(result.matched_paths[:2])}`"
+                lines.append(f"  - `{result.tool.value}`{command_hint}: {result.summary}")
+        return lines
 
     def _risk_level(self, result: ReviewResult) -> str:
         severities = {finding.severity for finding in result.findings}

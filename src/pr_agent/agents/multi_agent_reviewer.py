@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from pr_agent.agents.general_reviewer import _normalize_finding
 from pr_agent.context.models import ReviewContext
-from pr_agent.llm.client import LLMClient
+from pr_agent.llm.client import LLMClient, LLMOutputError
 from pr_agent.llm.prompts import build_specialized_review_system_prompt, build_specialized_review_user_prompt
 from pr_agent.review.schema import ReviewFinding
 
@@ -89,14 +89,29 @@ class MultiAgentReviewer:
         return _merge_role_summaries(summaries, context.file.filename), coordinated, stats
 
     def _review_with_spec(self, context: ReviewContext, spec: ReviewerSpec) -> tuple[str, list[ReviewFinding], dict[str, Any]]:
-        response = self.llm_client.complete_json(
-            system_prompt=build_specialized_review_system_prompt(
-                spec.role_name,
-                spec.focus,
-                list(spec.allowed_categories),
-            ),
-            user_prompt=build_specialized_review_user_prompt(context, spec.role_name, spec.focus),
-        )
+        try:
+            response = self.llm_client.complete_json(
+                system_prompt=build_specialized_review_system_prompt(
+                    spec.role_name,
+                    spec.focus,
+                    list(spec.allowed_categories),
+                ),
+                user_prompt=build_specialized_review_user_prompt(context, spec.role_name, spec.focus),
+            )
+        except LLMOutputError as exc:
+            return (
+                f"{spec.role_name} skipped because the model returned invalid JSON.",
+                [],
+                {
+                    "latency_seconds": 0.0,
+                    "usage": {},
+                    "total_tokens": 0,
+                    "model": "",
+                    "findings": 0,
+                    "status": "invalid_json",
+                    "error": str(exc),
+                },
+            )
         raw_findings = response.data.get("findings") or []
         if not isinstance(raw_findings, list):
             raw_findings = []

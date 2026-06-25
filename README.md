@@ -20,7 +20,7 @@ Compared with `origin/codex/version_mvp`, `version1` adds 44 changed files and r
 | Example outputs / 示例输出 | 单个 demo 输出 | 新增 PR、commit、compare、local diff 四类示例输出 |
 | LLM robustness / 模型鲁棒性 | 直接解析 JSON | 支持 fenced JSON/前后解释文本解析、JSON repair、timeout 配置、token usage 合并 |
 | Environment loading / 环境变量 | 默认当前目录 `.env` | 自动从项目根目录定位 `.env`，并支持 `OPENAI_TIMEOUT_SECONDS` |
-| Test coverage / 测试覆盖 | MVP 单测 | 当前 `55 passed`，新增多目标、GitHub Actions、评论、评测集、本地 diff 等测试 |
+| Test coverage / 测试覆盖 | MVP 单测 | 当前 `115 passed`，新增多目标、GitHub Actions、评论、评测集、本地 diff、验证工具等测试 |
 
 Version1 的新增代码主要落在这些模块：
 
@@ -40,6 +40,118 @@ Version1 的新增代码主要落在这些模块：
 - **Patch Suggestion / Test Suggestion**: Findings can include structured fix plans, optional patch snippets, validation commands, test scenarios, assertions, and optional test code.
 - **Evaluation Report**: `pr-agent eval-report` scores 20-30 PR-level cases with `valid_finding_rate`, `line_hit_rate`, `false_positive_rate`, `fixability_rate`, latency, token usage, and optional cost.
 - **Design reports**: See `docs/version2-design.md` and the agent harness note in `docs/agent-harness-design.md`.
+
+## Version 2.1 Update
+
+`v2.1` adds evidence-verified review. The model still proposes candidate findings, but findings can now pass through a controlled verification layer before publication:
+
+```mermaid
+flowchart TD
+    A["Multi-Agent Reviewer"] --> B["Coordinator"]
+    B --> C["Verification Planner"]
+    C --> D["Policy Gate"]
+    D --> E["Static Tools / Sandbox Tools"]
+    E --> F["Evidence Adjudicator"]
+    F --> G["Final Review Report"]
+```
+
+Why this matters: LLM-only review can produce plausible false positives. v2.1 records whether each finding is `supported`, `contradicted`, or `inconclusive`, which tools ran, what evidence they produced, and whether that evidence changed the confidence or publication decision.
+
+New review options:
+
+```powershell
+pr-agent review local `
+  --out outputs/local-review `
+  --verify static `
+  --workspace . `
+  --verification-budget 3 `
+  --verification-timeout 45
+```
+
+Verification modes:
+
+- `--verify off`: default v2 behavior; no new tools run.
+- `--verify static`: read-only repository tools only: repository search, file reads, test discovery, and dependency inspection.
+- `--verify sandbox`: static tools plus allowlisted Docker checks such as `python -m pytest -q <approved_test_path>`, `ruff check <approved_paths>`, and `mypy <approved_paths>`.
+
+Standalone verification:
+
+```powershell
+pr-agent verify outputs/local-review/review_result.json --workspace . --mode static --out outputs/verified-review
+```
+
+v2.1 output adds:
+
+- `verification_report.json`
+- `artifacts/verification/<finding-id>/search_result.json`
+- `artifacts/verification/<finding-id>/test_discovery.json`
+- sandbox logs such as `pytest.log` when sandbox mode is eligible
+- finding-level `verification` objects inside `review_result.json`
+
+Security boundary:
+
+- The LLM cannot provide raw shell commands.
+- Every tool request is filtered through a deterministic allowlist policy.
+- Sandbox execution copies the workspace into a cleaned temporary directory, drops `.git`, `.env`, keys, virtualenvs, `node_modules`, and build outputs, then runs Docker with no network, no forwarded secrets, read-only mount, dropped capabilities, memory/CPU/pid limits, and a timeout.
+- GitHub Actions automatically downgrades fork PRs from sandbox verification to static verification.
+
+Evaluation now includes verification metrics:
+
+| Metric | v2 | v2.1 |
+| --- | ---: | ---: |
+| valid_finding_rate | yes | yes |
+| false_positive_rate | yes | yes, expected lower |
+| line_hit_rate | yes | yes |
+| fixability_rate | yes | yes |
+| verification_coverage | no | yes |
+| supported_finding_rate | no | yes |
+| contradicted_suppression_rate | no | yes |
+| average latency | yes | yes, expected higher |
+| p95 latency | yes | yes |
+| token cost | yes | yes |
+
+Expanded live E2E manual run:
+
+Command:
+
+```powershell
+python -m pr_agent.main run-live-e2e --cases evaluation/live_e2e_cases.jsonl --out outputs/live-e2e-expanded --verify static --verification-budget 3 --verification-timeout 45
+```
+
+Summary:
+
+- Dataset: 20 cases, Python + C++.
+- Main run: 19 completed, 1 provider disconnect (`LIVE017`).
+- Retry: `LIVE017` completed separately.
+- Verification mode: `static`; most verification results are expected to stay `inconclusive`.
+- Detailed report: `outputs/live-e2e-expanded/manual_judgement_report.md`.
+
+| Case | Type | Expected | Manual result |
+| --- | --- | --- | --- |
+| LIVE001 | Python bug | None dereference before guard | Found; extra related test noise |
+| LIVE002 | Python security | SQL injection via f-string | Found; duplicate security finding suppressed |
+| LIVE003 | Python security | Authorization token logging | Found; extra test noise |
+| LIVE004 | Python mixed | Unsafe YAML + N+1 lookup | Found both; avoided SQL false positive |
+| LIVE005 | Python clean | Parameterized SQL should be clean | Clean result |
+| LIVE006 | Python clean | Guarded refactor should avoid None false positive | Avoided target false positive, but noisy test/contract findings |
+| LIVE007 | Python clean/tests | Existing tests should suppress broad test complaint | Clean result; evidence gate suppressed candidates |
+| LIVE008 | Python performance | Cache disable is benchmark-dependent | Cautious performance warning; static evidence inconclusive |
+| LIVE009 | Python blocker | SyntaxError/import blocker | Found |
+| LIVE010 | Python conditional crash | Divide-by-zero when `total == 0` | Found; extra test noise |
+| LIVE011 | Python logic/security | Authorization ownership check inverted | Found; duplicate bug/security/test noise |
+| LIVE012 | Python concurrency | Lock removed, race/lost update | Found; static evidence inconclusive |
+| LIVE013 | Python resource leak | File handle leak | Found; category noise across bug/security/test |
+| LIVE014 | Python clean concurrency | Lock retained, should be clean | Clean result; low-value test candidate suppressed |
+| LIVE015 | C++ blocker | Missing semicolon compile failure | Found |
+| LIVE016 | C++ conditional crash | Null pointer dereference before guard | Found; extra test noise |
+| LIVE017 | C++ lifetime | Dangling `c_str()` pointer | Partial; provider retry succeeded, root cause mentioned but public finding was only a test finding |
+| LIVE018 | C++ memory | Early-return memory leak | Partial; root cause recognized, but public finding was only a test finding |
+| LIVE019 | C++ concurrency | Mutex removed, data race | Found; static evidence inconclusive |
+| LIVE020 | C++ clean RAII | RAII ownership should avoid memory false positive | Avoided memory/pointer false positive, but published test noise |
+
+Manual takeaway: the agent catches obvious crash, build, security, logic, and lock-removal issues well in both Python and C++. The main weakness is publication quality: duplicate root causes, test-review noise, and C++ memory/lifetime bugs sometimes being surfaced only as missing-test findings.
+
+See `docs/version2_1_design.md`, `docs/sandbox-security.md`, and `docs/verification-evaluation.md`.
 
 ## 1. What It Does / 项目功能
 
@@ -264,7 +376,7 @@ Current test status:
 当前测试状态：
 
 ```text
-55 passed
+115 passed
 ```
 
 ## Use AI Review in Another GitHub Repository / 在其他 GitHub 仓库使用
@@ -324,18 +436,18 @@ on:
 示例 yml 会从本工具仓库安装 AI Review Agent：
 
 ```yaml
-run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@v1.0.0"
+run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@version2.1"
 ```
 
 因此，示例 yml 的可用前提是：
 
 - `Atirian-Chen/ai-pr-review-agent` 对目标仓库的 GitHub Actions runner 可访问。
-- `v1.0.0` tag 已经推送到 GitHub。
+- `version2.1` branch or tag 已经推送到 GitHub。
 
-如果你后续改用新的 release/tag，例如 `v1.1.0`，把安装行改成：
+如果你后续改用新的 release/tag，例如 `v2.1.0`，把安装行改成：
 
 ```yaml
-run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@v1.1.0"
+run: python -m pip install "git+https://github.com/Atirian-Chen/ai-pr-review-agent.git@v2.1.0"
 ```
 
 如果本工具仓库是 private，目标仓库还需要额外配置读取本工具仓库的 token；public 仓库不需要。
@@ -521,7 +633,7 @@ Estimated tokens: 1563
 - **ChangeSet abstraction / ChangeSet 抽象**: Different source types are normalized before review, avoiding duplicated reviewer logic.
 - **PR remains the main story / PR 仍是主线**: PR is still the best fit for GitHub code review workflows, while commit/compare/local support pre-PR and incremental scanning.
 - **CI integration without coupling / CI 集成但不绑死 CI**: GitHub Actions mode reuses the same runner as local CLI, so CI is an entry point rather than a separate review implementation.
-- **No code execution / 不执行目标代码**: The agent only reads metadata, diffs, and file content. It does not run untrusted code.
+- **Controlled tool execution / 受控工具执行**: By default the agent only reads metadata, diffs, and file content. v2.1 can run static verification tools, and can run minimal allowlisted checks in a Docker sandbox when explicitly enabled.
 - **Structured output first / 优先结构化输出**: Findings must match Pydantic schemas, so they can be filtered, sorted, evaluated, and rendered.
 - **Conservative review strategy / 保守审查策略**: The prompt asks the LLM to report only issues supported by diff or context.
 - **Validation after generation / 生成后校验**: The validator filters weak findings by confidence, file path, line number, evidence, and suggestion quality.

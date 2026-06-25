@@ -25,6 +25,8 @@ from pr_agent.review.validator import validate_findings
 from pr_agent.review.verifier import verify_findings
 from pr_agent.targets.loader import ChangeSetLoader
 from pr_agent.targets.models import ChangeSet
+from pr_agent.tools.executor import verify_review_result
+from pr_agent.tools.policy import VerificationOptions
 
 
 @dataclass(frozen=True)
@@ -45,10 +47,15 @@ def load_change_set(
     return ChangeSetLoader(github_client=client, repo_root=repo_root or Path.cwd()).load(target)
 
 
-def run_review(target: str, cfg: AppConfig, repo_root: Path | None = None) -> ReviewRun:
+def run_review(
+    target: str,
+    cfg: AppConfig,
+    repo_root: Path | None = None,
+    verification_options: VerificationOptions | None = None,
+) -> ReviewRun:
     root = repo_root or Path.cwd()
     change_set = load_change_set(target, cfg.github.api_base_url, cfg.github.timeout_seconds, root)
-    return run_review_on_change_set(change_set, cfg, repo_root=root)
+    return run_review_on_change_set(change_set, cfg, repo_root=root, verification_options=verification_options)
 
 
 def run_review_on_change_set(
@@ -58,6 +65,7 @@ def run_review_on_change_set(
     llm_client: LLMClient | None = None,
     verifier_llm_client: LLMClient | None = None,
     verifier_skip_reason: str | None = None,
+    verification_options: VerificationOptions | None = None,
 ) -> ReviewRun:
     started = time.perf_counter()
     trace_id = str(uuid.uuid4())
@@ -115,10 +123,26 @@ def run_review_on_change_set(
         root,
         max_findings=max(cfg.review.max_findings * 4, 32),
     )
+    evidence_result = deterministic_result
+    if verification_options is not None and verification_options.mode != "off":
+        evidence_result = verify_review_result(
+            deterministic_result,
+            change_set,
+            root,
+            verification_options,
+            max_findings=max(cfg.review.max_findings * 4, 32),
+        )
+        trace_rows.append(
+            {
+                "trace_id": trace_id,
+                "stage": "evidence_verification",
+                "stats": (evidence_result.stats.get("verification") or {}),
+            }
+        )
     if verifier_llm_client is None and verifier_skip_reason is None:
         verifier_llm_client, verifier_skip_reason = _build_verifier_llm_client(cfg)
     result = verify_findings_with_llm(
-        deterministic_result,
+        evidence_result,
         change_set,
         verifier_llm_client,
         max_findings=cfg.review.max_findings,
@@ -130,6 +154,8 @@ def run_review_on_change_set(
 def write_review_outputs(run: ReviewRun, out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     _write_json(out / "review_result.json", run.result.model_dump(mode="json"))
+    if run.result.stats.get("verification"):
+        _write_json(out / "verification_report.json", run.result.stats.get("verification"))
     (out / "review_report.md").write_text(MarkdownRenderer().render(run.result), encoding="utf-8")
     _write_trace(out / "trace.jsonl", run.trace_rows)
 

@@ -35,6 +35,10 @@ Important constraints:
 - Suppress missing-test findings unless they identify a concrete untested behavior or edge case.
 - Suppress findings that depend on assumptions not present in the candidate evidence or diff.
 - For docs/tests/evaluation files, prefer downgrade unless there is a concrete user-facing or security impact.
+- Tool verification evidence is authoritative for publication gating.
+- Do not ignore a contradicted verification status.
+- Do not upgrade inconclusive tool evidence to supported.
+- Do not generate new findings from the tool output.
 
 Return JSON only with this shape:
 {
@@ -178,6 +182,7 @@ def _finding_payload(finding: ReviewFinding) -> dict[str, Any]:
         "failure_mode": finding.failure_mode,
         "why_introduced_by_diff": finding.why_introduced_by_diff,
         "false_positive_checks": finding.false_positive_checks,
+        "verification": finding.verification.model_dump(mode="json") if finding.verification else None,
     }
 
 

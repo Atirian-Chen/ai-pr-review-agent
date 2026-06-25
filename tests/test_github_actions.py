@@ -25,6 +25,25 @@ def test_resolve_pull_request_event(tmp_path):
     assert target.target == "https://github.com/acme/app/pull/7"
     assert target.comment_target_type == "pull_request"
     assert target.pull_number == 7
+    assert not target.is_fork_pull_request
+
+
+def test_resolve_fork_pull_request_event_marks_fork(tmp_path):
+    path = _write_event(
+        tmp_path,
+        {
+            "repository": {"full_name": "acme/app"},
+            "pull_request": {
+                "number": 7,
+                "html_url": "https://github.com/acme/app/pull/7",
+                "head": {"repo": {"full_name": "contrib/app"}},
+            },
+        },
+    )
+
+    target = resolve_action_review_target(event_name="pull_request", event_path=path)
+
+    assert target.is_fork_pull_request
 
 
 def test_resolve_push_event_to_compare_target(tmp_path):
