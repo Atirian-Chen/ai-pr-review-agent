@@ -1,5 +1,7 @@
 # Agent Harness Design
 
+[中文版本](agent-harness-design_cn.md)
+
 This project can be described as a read-only agent harness for AI code review. The
 LLM reviewer is only one component. The surrounding harness controls what the
 reviewer sees, how multiple reviewer passes are invoked, how model output is

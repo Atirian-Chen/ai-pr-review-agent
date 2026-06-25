@@ -1,5 +1,7 @@
 # GitHub Actions Auto Review
 
+[中文版本](github-actions_cn.md)
+
 The workflow in `.github/workflows/ai-review.yml` runs AI review automatically.
 
 ## Triggers

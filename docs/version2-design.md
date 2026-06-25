@@ -1,5 +1,7 @@
 # Version2 Design Report
 
+[中文版本](version2-design_cn.md)
+
 ## Goals
 
 Version2 adds three review-quality capabilities:

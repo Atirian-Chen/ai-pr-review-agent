@@ -1,5 +1,7 @@
 # Sandbox Security
 
+[中文版本](sandbox-security_cn.md)
+
 ## Threat Model
 
 Sandbox verification may execute code from the reviewed repository. That code is untrusted, especially for pull requests. The sandbox design therefore prevents the model and the reviewed code from gaining broad shell, network, filesystem, or secret access.
@@ -86,4 +88,3 @@ Recommended behavior:
 ## Residual Risk
 
 Docker sandboxing reduces risk but is not a formal security proof. Keep timeouts small, do not pass secrets to containers, and keep fork PRs on static verification unless a maintainer intentionally changes the policy.
-

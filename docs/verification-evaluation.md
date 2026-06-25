@@ -1,5 +1,7 @@
 # Verification Evaluation
 
+[中文版本](verification-evaluation_cn.md)
+
 ## Dataset
 
 Verification cases live at:
@@ -58,4 +60,3 @@ Expected tradeoff:
 ## Important Scoring Rule
 
 Passing tests are not enough to contradict a bug finding. A contradiction requires evidence that maps to the finding's concrete assertion, such as a related test covering the claimed missing behavior or static evidence proving the described path cannot occur.
-
