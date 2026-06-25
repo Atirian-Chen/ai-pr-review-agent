@@ -122,6 +122,78 @@ class VerificationCase(BaseModel):
         return value.strip()
 
 
+class LiveE2ECaseFile(BaseModel):
+    path: str
+    base: str = ""
+    head: str
+
+    @field_validator("path")
+    @classmethod
+    def _path_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("field must not be blank")
+        return value.strip()
+
+
+class LiveE2EContextFile(BaseModel):
+    path: str
+    content: str
+
+    @field_validator("path")
+    @classmethod
+    def _path_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("field must not be blank")
+        return value.strip()
+
+
+class LiveE2EExpectedIssue(BaseModel):
+    label: str
+    category: str
+    file_path: str
+    line_start: int | None = None
+    line_end: int | None = None
+    severity: str = "minor"
+    description: str
+    should_be_detected: bool = True
+
+    @field_validator("label", "category", "file_path", "description")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("field must not be blank")
+        return value.strip()
+
+
+class LiveE2ECase(BaseModel):
+    id: str
+    title: str
+    description: str
+    files: list[LiveE2ECaseFile]
+    context_files: list[LiveE2EContextFile] = Field(default_factory=list)
+    expected_issues: list[LiveE2EExpectedIssue] = Field(default_factory=list)
+    expected_issue_count: int = Field(default=0, ge=0)
+    clean_case: bool = False
+    labels: list[str] = Field(default_factory=list)
+    known_hard_to_detect: list[str] = Field(default_factory=list)
+    manual_review_notes: str = ""
+    difficulty: Difficulty = "medium"
+
+    @field_validator("id", "title", "description")
+    @classmethod
+    def _case_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("field must not be blank")
+        return value.strip()
+
+    @field_validator("files")
+    @classmethod
+    def _files_not_empty(cls, value: list[LiveE2ECaseFile]) -> list[LiveE2ECaseFile]:
+        if not value:
+            raise ValueError("live E2E case must include at least one file")
+        return value
+
+
 def load_evaluation_cases(path: Path) -> list[EvaluationCase]:
     cases: list[EvaluationCase] = []
     seen_ids: set[str] = set()
@@ -192,6 +264,30 @@ def load_verification_cases(path: Path) -> list[VerificationCase]:
             raise ValueError(f"Invalid verification case at {path}:{line_number}") from exc
         if case.id in seen_ids:
             raise ValueError(f"Duplicate verification case id {case.id!r} at {path}:{line_number}")
+        seen_ids.add(case.id)
+        cases.append(case)
+    return cases
+
+
+def load_live_e2e_cases(path: Path) -> list[LiveE2ECase]:
+    cases: list[LiveE2ECase] = []
+    seen_ids: set[str] = set()
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            case = LiveE2ECase.model_validate_json(line)
+        except ValueError as exc:
+            raise ValueError(f"Invalid live E2E case at {path}:{line_number}") from exc
+        if case.id in seen_ids:
+            raise ValueError(f"Duplicate live E2E case id {case.id!r} at {path}:{line_number}")
+        if case.expected_issue_count != len(case.expected_issues):
+            raise ValueError(
+                f"Live E2E case {case.id!r} expected_issue_count={case.expected_issue_count} "
+                f"does not match expected_issues length {len(case.expected_issues)}"
+            )
+        if case.clean_case and case.expected_issues:
+            raise ValueError(f"Live E2E clean case {case.id!r} must not define expected issues")
         seen_ids.add(case.id)
         cases.append(case)
     return cases

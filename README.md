@@ -110,6 +110,47 @@ Evaluation now includes verification metrics:
 | p95 latency | yes | yes |
 | token cost | yes | yes |
 
+Expanded live E2E manual run:
+
+Command:
+
+```powershell
+python -m pr_agent.main run-live-e2e --cases evaluation/live_e2e_cases.jsonl --out outputs/live-e2e-expanded --verify static --verification-budget 3 --verification-timeout 45
+```
+
+Summary:
+
+- Dataset: 20 cases, Python + C++.
+- Main run: 19 completed, 1 provider disconnect (`LIVE017`).
+- Retry: `LIVE017` completed separately.
+- Verification mode: `static`; most verification results are expected to stay `inconclusive`.
+- Detailed report: `outputs/live-e2e-expanded/manual_judgement_report.md`.
+
+| Case | Type | Expected | Manual result |
+| --- | --- | --- | --- |
+| LIVE001 | Python bug | None dereference before guard | Found; extra related test noise |
+| LIVE002 | Python security | SQL injection via f-string | Found; duplicate security finding suppressed |
+| LIVE003 | Python security | Authorization token logging | Found; extra test noise |
+| LIVE004 | Python mixed | Unsafe YAML + N+1 lookup | Found both; avoided SQL false positive |
+| LIVE005 | Python clean | Parameterized SQL should be clean | Clean result |
+| LIVE006 | Python clean | Guarded refactor should avoid None false positive | Avoided target false positive, but noisy test/contract findings |
+| LIVE007 | Python clean/tests | Existing tests should suppress broad test complaint | Clean result; evidence gate suppressed candidates |
+| LIVE008 | Python performance | Cache disable is benchmark-dependent | Cautious performance warning; static evidence inconclusive |
+| LIVE009 | Python blocker | SyntaxError/import blocker | Found |
+| LIVE010 | Python conditional crash | Divide-by-zero when `total == 0` | Found; extra test noise |
+| LIVE011 | Python logic/security | Authorization ownership check inverted | Found; duplicate bug/security/test noise |
+| LIVE012 | Python concurrency | Lock removed, race/lost update | Found; static evidence inconclusive |
+| LIVE013 | Python resource leak | File handle leak | Found; category noise across bug/security/test |
+| LIVE014 | Python clean concurrency | Lock retained, should be clean | Clean result; low-value test candidate suppressed |
+| LIVE015 | C++ blocker | Missing semicolon compile failure | Found |
+| LIVE016 | C++ conditional crash | Null pointer dereference before guard | Found; extra test noise |
+| LIVE017 | C++ lifetime | Dangling `c_str()` pointer | Partial; provider retry succeeded, root cause mentioned but public finding was only a test finding |
+| LIVE018 | C++ memory | Early-return memory leak | Partial; root cause recognized, but public finding was only a test finding |
+| LIVE019 | C++ concurrency | Mutex removed, data race | Found; static evidence inconclusive |
+| LIVE020 | C++ clean RAII | RAII ownership should avoid memory false positive | Avoided memory/pointer false positive, but published test noise |
+
+Manual takeaway: the agent catches obvious crash, build, security, logic, and lock-removal issues well in both Python and C++. The main weakness is publication quality: duplicate root causes, test-review noise, and C++ memory/lifetime bugs sometimes being surfaced only as missing-test findings.
+
 See `docs/version2_1_design.md`, `docs/sandbox-security.md`, and `docs/verification-evaluation.md`.
 
 ## 1. What It Does / 项目功能

@@ -22,7 +22,7 @@ from pr_agent.evaluation.dataset import (
     report_to_json,
     summarize_verification_cases,
 )
-from pr_agent.evaluation.runner import run_pr_evaluation
+from pr_agent.evaluation.runner import run_live_e2e, run_pr_evaluation
 from pr_agent.github.actions import GitHubActionSkip, resolve_action_review_target
 from pr_agent.github.client import GitHubClient
 from pr_agent.github.models import ChangedFile
@@ -252,6 +252,29 @@ def eval_run(
         line_tolerance=line_tolerance,
     )
     typer.echo(report_to_json(result.report))
+
+
+@app.command("run-live-e2e")
+def run_live_e2e_command(
+    cases: Path = typer.Option(Path("evaluation/live_e2e_cases.jsonl"), "--cases", help="Live E2E JSONL cases"),
+    out: Path = typer.Option(Path("outputs/live-e2e"), "--out", "-o", help="Output directory for live E2E outputs"),
+    config: Path | None = typer.Option(None, "--config", help="Config YAML path"),
+    verify: str = typer.Option("static", "--verify", help="Verification mode: off, static, or sandbox"),
+    verification_budget: int = typer.Option(3, "--verification-budget", help="Maximum findings to verify per case"),
+    verification_timeout: int = typer.Option(45, "--verification-timeout", help="Per sandbox tool timeout in seconds"),
+) -> None:
+    """Run live LLM E2E cases and write outputs for manual judgement."""
+    load_dotenv_file()
+    cfg = load_config(config)
+    result = run_live_e2e(
+        cases_path=cases,
+        out=out,
+        cfg=cfg,
+        verify_mode=verify,
+        verification_budget=verification_budget,
+        verification_timeout=verification_timeout,
+    )
+    typer.echo(json.dumps(result.manifest, ensure_ascii=True, indent=2))
 
 
 def _write_json(path: Path, payload: Any) -> None:
