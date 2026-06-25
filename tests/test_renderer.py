@@ -1,6 +1,16 @@
 from pr_agent.github.models import PRInfo
 from pr_agent.review.renderer import MarkdownRenderer
-from pr_agent.review.schema import PatchSuggestion, ReviewFinding, ReviewResult, TestSuggestion as ReviewTestSuggestion
+from pr_agent.review.schema import (
+    FindingVerification,
+    PatchSuggestion,
+    ReviewFinding,
+    ReviewResult,
+    TestSuggestion as ReviewTestSuggestion,
+    ToolKind,
+    ToolResult,
+    VerificationPlan,
+    VerificationStatus,
+)
 
 
 def make_pr() -> PRInfo:
@@ -125,3 +135,57 @@ def test_renderer_includes_patch_and_test_suggestions():
     assert "Patch Suggestion" in report
     assert "python -m pytest" in report
     assert "test_none_branch" in report
+
+
+def test_renderer_includes_finding_verification_details():
+    plan = VerificationPlan(
+        finding_id="f1",
+        goal="Check behavior",
+        requested_tools=[ToolKind.REPOSITORY_SEARCH],
+        rationale="Use safe tools.",
+        risk_level="low",
+    )
+    result = ReviewResult(
+        pr=make_pr(),
+        summary="Found one issue.",
+        findings=[
+            ReviewFinding(
+                id="f1",
+                file_path="src/app.py",
+                line_start=10,
+                line_end=10,
+                category="bug",
+                severity="major",
+                confidence=0.9,
+                title="None branch can fail",
+                description="The new branch returns None.",
+                evidence="+ return None",
+                suggestion="Return a value or raise.",
+                verification=FindingVerification(
+                    status=VerificationStatus.SUPPORTED,
+                    plan=plan,
+                    tool_results=[
+                        ToolResult(
+                            tool=ToolKind.REPOSITORY_SEARCH,
+                            success=True,
+                            summary="Found call sites.",
+                            duration_ms=5,
+                        )
+                    ],
+                    evidence_summary="Targeted evidence supports the finding.",
+                    confidence_before=0.8,
+                    confidence_after=0.9,
+                    publication_decision="publish",
+                ),
+                reviewer="bug",
+            )
+        ],
+        stats={},
+        model_info={"model": "test-model"},
+    )
+
+    report = MarkdownRenderer().render(result)
+
+    assert "Verification: Supported" in report
+    assert "Targeted evidence supports the finding." in report
+    assert "Reviewer confidence: 0.80 -> 0.90" in report

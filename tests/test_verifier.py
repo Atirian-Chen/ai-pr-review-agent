@@ -224,3 +224,22 @@ def test_verifier_downgrades_major_doc_findings(tmp_path):
 
     assert verified.findings[0].category == "maintainability"
     assert verified.findings[0].severity == "minor"
+
+
+def test_verifier_caps_critical_test_findings_to_major(tmp_path):
+    _write(tmp_path / "src/app.py", "def load():\n    return 1\n")
+    finding = _finding(
+        "src/app.py",
+        category="test",
+        severity="critical",
+        confidence=0.97,
+        title="Missing regression test",
+        description="A changed behavior needs regression coverage.",
+        evidence="+ return 1",
+        suggestion="Add a focused regression test.",
+    )
+
+    verified = verify_findings(_result([finding]), _change_set("src/app.py"), tmp_path, max_findings=8)
+
+    assert verified.findings[0].severity == "major"
+    assert verified.findings[0].confidence == 0.9

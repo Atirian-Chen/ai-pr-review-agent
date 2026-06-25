@@ -231,15 +231,25 @@ def _prediction_from_review(case_id: str, result, latency_seconds: float) -> PRP
             title=finding.title,
             has_patch_suggestion=finding.patch_suggestion is not None or bool(finding.suggested_patch),
             has_test_suggestion=bool(finding.test_suggestions),
+            verification_status=finding.verification.status.value if finding.verification else None,
+            publication_decision=finding.verification.publication_decision if finding.verification else None,
         )
         for finding in result.findings
     ]
+    verification = result.stats.get("verification") or {}
+    tool_cost = verification.get("tool_cost") or {}
+    sandbox_tool_calls = int(tool_cost.get("sandbox_tool_calls") or 0)
     return PRPredictionRecord(
         case_id=case_id,
         findings=findings,
         latency_seconds=latency_seconds,
+        verification_latency_seconds=verification.get("verification_latency_seconds"),
         total_tokens=int(result.stats.get("total_tokens") or 0),
         cost_usd=None,
+        static_tool_calls=tool_cost.get("static_tool_calls"),
+        sandbox_tool_calls=sandbox_tool_calls,
+        llm_verifier_calls=1 if (result.stats.get("llm_verifier") or {}).get("status") == "completed" else 0,
+        sandbox_failures=int((verification.get("sandbox_failure_rate") or 0) * sandbox_tool_calls),
     )
 
 

@@ -167,6 +167,8 @@ def _existing_cli_command_contradiction(finding: ReviewFinding, evidence: "Repos
 
 
 def _calibrate_finding(finding: ReviewFinding) -> ReviewFinding:
+    if finding.category == "test" and finding.severity == "critical":
+        return finding.model_copy(update={"severity": "major", "confidence": min(finding.confidence, 0.9)})
     path = PurePosixPath(finding.file_path.replace("\\", "/"))
     if _is_docs_path(str(path)) and finding.category != "security" and finding.severity in {"critical", "major"}:
         return finding.model_copy(update={"category": "maintainability", "severity": "minor", "confidence": min(finding.confidence, 0.8)})
@@ -350,7 +352,10 @@ class RepositoryEvidence:
 
     @staticmethod
     def _normalize(path: str) -> str:
-        return path.replace("\\", "/").lstrip("./")
+        normalized = path.replace("\\", "/")
+        while normalized.startswith("./"):
+            normalized = normalized[2:]
+        return normalized
 
 
 def _path_stem_matches(path: str, source_stem: str, parent_stem: str) -> bool:

@@ -2,7 +2,7 @@ from pr_agent.agents.multi_agent_reviewer import MultiAgentReviewer
 from pr_agent.context.models import ReviewContext
 from pr_agent.diff.models import DiffHunk, DiffLine
 from pr_agent.github.models import ChangedFile, PRInfo
-from pr_agent.llm.client import LLMClient, LLMJsonResponse
+from pr_agent.llm.client import LLMClient, LLMJsonResponse, LLMOutputError
 
 
 class FakeLLM(LLMClient):
@@ -115,3 +115,22 @@ def test_multi_agent_reviewer_runs_specialized_reviewers_and_preserves_suggestio
     assert findings[1].test_suggestions[0].test_name == "test_none_branch"
     assert stats["reviewer_mode"] == "multi_agent"
     assert stats["coordinator"]["input_findings"] == 2
+
+
+def test_multi_agent_reviewer_continues_when_one_reviewer_returns_invalid_json():
+    class FlakyLLM(FakeLLM):
+        def complete_json(self, system_prompt: str, user_prompt: str) -> LLMJsonResponse:
+            if self.calls == 0:
+                self.calls += 1
+                raise LLMOutputError("bad json")
+            return super().complete_json(system_prompt, user_prompt)
+
+    llm = FlakyLLM()
+    reviewer = MultiAgentReviewer(llm)
+
+    summary, findings, stats = reviewer.review_context(_context())
+
+    assert "invalid JSON" in summary
+    assert stats["reviewer_stats"]["bug"]["status"] == "invalid_json"
+    assert [finding.reviewer for finding in findings] == ["test"]
+    assert stats["coordinator"]["input_findings"] == 1

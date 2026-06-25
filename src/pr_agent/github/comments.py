@@ -35,6 +35,8 @@ def build_summary_comment(result: ReviewResult, max_findings: int = 8) -> str:
     if verification:
         lines.extend(
             [
+                f"- Verification mode: {verification.get('mode', 'deterministic')}",
+                f"- Verification coverage: {verification.get('verification_coverage', 0):.2%}",
                 f"- Candidate findings: {verification.get('candidate_findings', 0)}",
                 f"- Suppressed candidates: {verification.get('suppressed_findings', 0)}",
                 f"- Published findings: {verification.get('published_findings', len(result.findings))}",
@@ -61,6 +63,11 @@ def build_summary_comment(result: ReviewResult, max_findings: int = 8) -> str:
                 f"{index}. **{finding.severity.title()} / {finding.category}** "
                 f"`{location}`: {finding.title} ({finding.confidence:.2f})"
             )
+            if finding.verification:
+                lines.append(
+                    f"   - Verification: `{finding.verification.status.value}`; "
+                    f"{finding.verification.evidence_summary}"
+                )
         hidden_count = len(result.findings) - max_findings
         if hidden_count > 0:
             lines.append(f"{hidden_count} additional finding(s) omitted from this summary comment.")

@@ -25,6 +25,7 @@ class GitHubActionReviewTarget:
     event_name: str
     pull_number: int | None = None
     commit_sha: str | None = None
+    is_fork_pull_request: bool = False
 
 
 def resolve_action_review_target(
@@ -48,6 +49,7 @@ def resolve_action_review_target(
         if pull_number <= 0:
             raise ValueError("pull_request event payload does not contain a valid PR number")
         target = pr_payload.get("html_url") or f"{base_url}/{owner}/{repo}/pull/{pull_number}"
+        is_fork = _is_fork_pull_request(pr_payload, repo_full_name)
         return GitHubActionReviewTarget(
             target=target,
             comment_target_type="pull_request",
@@ -55,6 +57,7 @@ def resolve_action_review_target(
             repo=repo,
             event_name=resolved_event_name,
             pull_number=pull_number,
+            is_fork_pull_request=is_fork,
         )
 
     if resolved_event_name == "push":
@@ -111,3 +114,11 @@ def _split_repo_full_name(repo_full_name: str) -> tuple[str, str]:
 
 def _is_zero_sha(value: str) -> bool:
     return bool(value) and set(value) == {"0"}
+
+
+def _is_fork_pull_request(pr_payload: dict, base_repo_full_name: str) -> bool:
+    head_repo = (pr_payload.get("head") or {}).get("repo") or {}
+    head_full_name = head_repo.get("full_name")
+    if not head_full_name:
+        return False
+    return str(head_full_name).lower() != base_repo_full_name.lower()

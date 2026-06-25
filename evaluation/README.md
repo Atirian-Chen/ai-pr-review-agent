@@ -8,6 +8,8 @@ This directory contains a JSONL evaluation dataset for the AI PR Review Agent.
 - `pr_cases.jsonl`: 25 PR-level simulated cases with expected findings for bug, security, performance, and test review quality.
 - `runnable_pr_cases.jsonl`: 20 executable simulated cases with base/head file content.
 - `pr_predictions.example.jsonl`: Example PR prediction records for `eval-report`.
+- `verification_cases.jsonl`: v2.1 verification cases covering supported, contradicted, and inconclusive evidence outcomes.
+- `fixtures/verification_cases/`: Small repositories used by verification cases.
 
 ## Run
 
@@ -70,3 +72,18 @@ The PR-level report includes:
 - `fixability_rate`
 - latency average/p95/total
 - token total/average and optional cost
+- v2.1 verification metrics: coverage, supported rate, contradicted suppression rate, inconclusive rate, sandbox failure rate, and tool cost
+
+## Verification Evaluation
+
+Summarize v2.1 verification cases:
+
+```powershell
+pr-agent eval-verification --cases evaluation/verification_cases.jsonl --out outputs/verification_evaluation_report.json
+```
+
+The expected statuses are:
+
+- `supported`: tool evidence supports the finding.
+- `contradicted`: tool evidence refutes the finding and the finding should be suppressed.
+- `inconclusive`: tools could not confirm or refute the finding.
